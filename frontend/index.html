@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iyomi</title>
+  <!-- Fonts and stylesheets -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Yuji+Mai&family=Yuji+Syuku&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Yuji+Hentaigana+Akari&family=Yuji+Mai&family=Yuji+Syuku&display=swap" rel="stylesheet">
+  <!-- Favicon for light/dark mode -->
+  <link rel="icon" href="assets/favicon-light.svg" media="(prefers-color-scheme: light)">
+  <link rel="icon" href="assets/favicon-dark.svg" media="(prefers-color-scheme: dark)">
+  <!-- Custom styles -->
+  <link rel="stylesheet" href="styles/design-system.css">
+  <link rel="stylesheet" href="styles/style.css">
+  <!-- Clerk -->
+  <script defer crossorigin="anonymous"
+    src="https://comic-stallion-44.clerk.accounts.dev/npm/@clerk/ui@1/dist/ui.browser.js">
+  </script>
+  <script defer crossorigin="anonymous"
+    data-clerk-publishable-key="pk_test_Y29taWMtc3RhbGxpb24tNDQuY2xlcmsuYWNjb3VudHMuZGV2JA"
+    src="https://comic-stallion-44.clerk.accounts.dev/npm/@clerk/clerk-js@6/dist/clerk.browser.js">
+  </script>
+</head>
+<body>
+
+<!-- Header and navigation -->
+<header>
+  <div class="container">
+    <nav>
+      <!-- Logo -->
+      <a href="#" class="nav-logo" aria-label="Iyomi home">
+        <span class="yuji-hentaigana-akari-regular">ゆ</span>
+      </a>
+
+      <div class="nav-right">
+        <div class="nav-group">
+          <div class="nav-links">
+
+            <!-- Products dropdown -->
+            <div class="nav-item dropdown">
+              <a href="#">Products</a>
+              <div class="dropdown-menu">
+                <div class="dropdown-inner cols-3">
+                  <div class="dropdown-box">
+                    <div class="dropdown-content">
+                      <div class="dropdown-column">
+                        <a href="" class="dropdown-link">
+                          <div class="dropdown-group">
+                            <h4>Iyomi Chat</h4>
+                            <p>Text companion that <br> reads between the lines.</p>
+                          </div>
+                        </a>
+                      </div>
+                      <div class="dropdown-column">
+                        <a href="#" class="dropdown-link">
+                          <div class="dropdown-group">
+                            <h4>Iyomi Voice</h4>
+                            <p>Voice-first conversations <br> that feel real.</p>
+                          </div>
+                        </a>
+                      </div>
+                      <div class="dropdown-column">
+                        <a href="#" class="dropdown-link">
+                          <div class="dropdown-group">
+                            <h4>Iyomi Actions</h4>
+                            <p>She doesn't just talk - <br> gets things done.</p>
+                          </div>
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="dropdown-footer-bar">
+                    <span>New: Iyomi Actions with MCP</span>
+                    <a href="/changelog">Changelog →</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Resources dropdown -->
+            <div class="nav-item dropdown">
+              <a href="#">Resources</a>
+              <div class="dropdown-menu">
+                <div class="dropdown-inner cols-3">
+                  <div class="dropdown-box">
+                    <div class="dropdown-content">
+                      <div class="dropdown-column">
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Documentation</h4><p>How Iyomi works under the hood</p></div></a>
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Blog</h4><p>Updates, stories, behind-the-scenes</p></div></a>
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>FAQ</h4><p>Common questions answered</p></div></a>
+                      </div>
+                      <div class="dropdown-column">
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Developers</h4><p>Build on the Iyomi platform</p></div></a>
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>GitHub</h4><p>Source code and contributions</p></div></a>
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>MCP Server Guide</h4><p>Build custom integrations</p></div></a>
+                      </div>
+                      <div class="dropdown-column">
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Community</h4><p>Join the conversation</p></div></a>
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Discord</h4><p>Connect with other users</p></div></a>
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Feedback</h4><p>Help shape Iyomi's future</p></div></a>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="dropdown-footer-bar">
+                    <span>Open source and community-driven</span>
+                    <a href="#" class="dropdown-link">GitHub →</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Solutions dropdown -->
+            <div class="nav-item dropdown">
+              <a href="#">Solutions</a>
+              <div class="dropdown-menu">
+                <div class="dropdown-inner cols-3">
+                  <div class="dropdown-box">
+                    <div class="dropdown-content">
+                      <div class="dropdown-column">
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Students</h4><p>Study buddy, emotional support</p></div></a>
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Professionals</h4><p>Morning briefings, task management</p></div></a>
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Developers</h4><p>Build, extend, and contribute</p></div></a>
+                      </div>
+                      <div class="dropdown-column">
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Use Cases</h4><p>Someone to talk to, anytime</p></div></a>
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Mental Wellness</h4><p>Mood tracking, check-ins, journaling</p></div></a>
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Late Night Talks</h4><p>When you can't sleep, she's there</p></div></a>
+                      </div>
+                      <div class="dropdown-column">
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Industries</h4><p>Campus life, grades, scheduling</p></div></a>
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Personal Productivity</h4><p>Calendar, reminders, routines</p></div></a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Features dropdown -->
+            <div class="nav-item dropdown">
+              <a href="#">Features</a>
+              <div class="dropdown-menu">
+                <div class="dropdown-inner cols-3">
+                  <div class="dropdown-box">
+                    <div class="dropdown-content">
+                      <div class="dropdown-column">
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Chat Features</h4></div></a>
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Mood-aware UI</h4><p>Interface adapts to your mood</p></div></a>
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Memory Timeline</h4><p>Scroll through shared moments</p></div></a>
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Daily Check-ins</h4><p>Context-aware, never generic</p></div></a>
+                      </div>
+                      <div class="dropdown-column">
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Voice Features</h4></div></a>
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Emotional Voice Modulation</h4><p>Her tone shifts with the conversation</p></div></a>
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Interruption Handling</h4><p>Cut in anytime, she listens</p></div></a>
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Night Mode</h4><p>Softer voice for late conversations</p></div></a>
+                      </div>
+                      <div class="dropdown-column">
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Action Features</h4></div></a>
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Natural Language Commands</h4><p>Just ask, she handles it</p></div></a>
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Multi-tool Chaining</h4><p>One request, multiple actions</p></div></a>
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Smart Suggestions</h4><p>She suggests before you ask</p></div></a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- About dropdown -->
+            <div class="nav-item dropdown">
+              <a href="#">About</a>
+              <div class="dropdown-menu">
+                <div class="dropdown-inner cols-2">
+                  <div class="dropdown-box">
+                    <div class="dropdown-content">
+                      <div class="dropdown-column">
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Our Story</h4><p>Why we built Iyomi</p></div></a>
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Open Source</h4><p>Built by students, for everyone</p></div></a>
+                      </div>
+                      <div class="dropdown-column">
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Vision</h4><p>The future of AI companionship</p></div></a>
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><h4>Contact</h4><p>Get in touch with us</p></div></a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Team dropdown -->
+            <div class="nav-item dropdown">
+              <a href="#">Team</a>
+              <div class="dropdown-menu">
+                <div class="dropdown-inner cols-2">
+                  <div class="dropdown-box">
+                    <div class="dropdown-content">
+                      <div class="dropdown-column">
+                        <div class="team-section-label">Our Team</div>
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><p class="team-subtitle">Palak Barskar <span class="team-h4">(BTE25CSE000152)</span></p><h4 class="team-h4">Frontend Developer</h4><p class="team-p">Section B • SAGE University, Bhopal</p></div></a>
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><p class="team-subtitle">Mohd. Taufique <span class="team-h4">(BTE25CSE100018)</span></p><h4 class="team-h4">Backend Developer</h4><p class="team-p">Section B • SAGE University, Bhopal</p></div></a>
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><p class="team-subtitle">Raj Thakre <span class="team-h4">(BTE25CSE000185)</span></p><h4 class="team-h4">AI Integrator</h4><p class="team-p">Section C • SAGE University, Bhopal</p></div></a>
+                      </div>
+                      <div class="dropdown-column">
+                        <div class="team-section-label">Our Guide</div>
+                        <a href="#" class="dropdown-link"><div class="dropdown-group"><p class="team-subtitle">Ms. Nandini Sharma <span class="team-h4">(Project Guide)</span></p><h4 class="team-h4">Assistant Professor</h4><p class="team-p">School of Engineering and Technology, Bhopal</p></div></a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <span class="nav-divider"></span>
+
+        <!-- Call to action button -->
+        <div class="nav-actions">
+          <button class="primary-btn" onclick="window.location.href='pages/auth/login.html'">
+            Try Iyomi
+          </button>
+        </div>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<!-- Hero section -->
+<section class="hero">
+  <div class="hero-portrait">
+    <img src="../assets/img/iyomi-portrait.png" alt="" />
+  </div>
+  <div class="hero-inner">
+    <h1 class="hero-title">
+      Meet your best friend <br> who actually gets you.
+    </h1>
+    <div class="hero-row">
+      <p class="hero-sub">
+        It Connects, Remembers, Feels, and Acts, All in One Conversation.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- Video frame with ambient effect -->
+<section class="frame-section">
+  <div class="frame-ambilight"></div>
+  <div class="frame-container">
+    <div class="frame-inner">
+      <video class="frame-video" id="frameVideo" src="../assets/video/your-video.mp4" autoplay muted loop playsinline preload="auto"></video>
+      <canvas id="ambientCanvas" style="display:none"></canvas>
+    </div>
+  </div>
+</section>
+
+<!-- Manifesto section -->
+<section class="manifesto-section">
+  <div class="container">
+    <div class="manifesto-container">
+      <h2 class="manifesto-headline" id="manifesto-headline">
+        <span class="bold-white">
+          A new paradigm of AI interaction. Purpose-built for emotional depth, persistent memory, and agentic capabilities at its core,
+        </span>
+        <span class="muted-gray">
+          Iyomi fundamentally redefines what it means to have a conversation with a machine and 
+          why it should feel like more than just a tool.
+        </span>
+      </h2>
+    </div>
+  </div>
+</section>
+
+<!-- Three pillars (features) -->
+<div class="container">
+  <div class="pillars">
+    <!-- Pillar 1 -->
+    <div class="pillar">
+      <span class="pillar-label">FIG 0.1</span>
+      <div class="product-frame">
+        <img src="assets/svg/svg1.svg" alt="Chat illustration">
+      </div>
+      <h3 class="pillar-title">Built for connection</h3>
+      <p class="pillar-desc">
+        Shaped by the psychology of human bonding persistent memory, tonal awareness, and a personality that never breaks character.
+      </p>
+    </div>
+    <!-- Pillar 2 -->
+    <div class="pillar">
+      <span class="pillar-label">FIG 0.2</span>
+      <div class="product-frame">
+        <img src="assets/svg/svg2.svg" alt="Voice illustration">
+      </div>
+      <h3 class="pillar-title">Powered by MCP agents</h3>
+      <p class="pillar-desc">
+        Designed for workflows where conversation becomes action. From checking your calendar to managing your day through natural dialogue.
+      </p>
+    </div>
+    <!-- Pillar 3 -->
+    <div class="pillar">
+      <span class="pillar-label">FIG 0.3</span>
+      <div class="product-frame">
+        <img src="assets/svg/svg3.svg" alt="Actions illustration">
+      </div>
+      <h3 class="pillar-title">Engineered for presence</h3>
+      <p class="pillar-desc">
+        Sub-3-second voice latency, emotion-adaptive TTS, and silence-aware turn-taking that eliminates the uncanny valley of AI conversation.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- Products section (Chat, Voice, Actions) -->
+<section class="products-section">
+  <div class="container">
+    <div class="products-container">
+      <section class="product-section">
+        <div class="product-container">
+          <!-- Chat product -->
+          <div class="product-block">
+            <div class="product-header">
+              <h3 class="product-title">Iyomi chat lets you think out <br> loud without losing context.</h3>
+              <p class="product-description">
+                Understands how your thoughts evolve over time, <br> keeping track of context, recalling past conversations, <br> and responding in a way that feels continuous rather <br> than reset with every message.
+              </p>
+            </div>
+            <div class="product-showcase">
+              <div class="product-showcase-inner">
+                <!-- Placeholder for future mockup -->
+              </div>
+            </div>
+          </div>
+          <!-- Voice product -->
+          <div class="product-block">
+            <div class="product-header">
+              <h3 class="product-title">Iyomi voice lets you talk naturally <br> and be understood instantly.</h3>
+              <p class="product-description">
+                Enables real-time voice interactions that feel <br> fluid and responsive, adjusting tone, pacing, <br> and emotional nuance so conversations feel  <br> natural and comfortable instead of mechanical.
+              </p>
+            </div>
+            <div class="product-showcase">
+              <div class="product-showcase-inner">
+                <!-- Placeholder for future mockup -->
+              </div>
+            </div>
+          </div>
+          <!-- Actions product -->
+          <div class="product-block">
+            <div class="product-header">
+              <h3 class="product-title">Iyomi actions lets you get <br> things done just by talking.</h3>
+              <p class="product-description">
+                Transforms conversation into meaningful outcomes <br> by managing tasks, coordinating multiple steps, <br> and executing workflows in the background while <br> you stay focused on the conversation itself.
+              </p>
+            </div>
+            <div class="product-showcase">
+              <div class="product-showcase-inner">
+                <!-- Placeholder for future mockup -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <!-- Brand tagline -->
+  <div class="footer-brand">
+    <div class="footer-brand-inner">
+      <p class="footer-tagline">
+        Iyomi - A New Paradigm of AI Interaction.
+      </p>
+    </div>
+  </div>
+  <!-- Divider -->
+  <div class="footer-divider"></div>
+  <!-- Footer navigation columns -->
+  <div class="footer-container">
+    <div class="footer-col">
+      <h4 class="footer-heading">Product</h4>
+      <ul>
+        <li><a href="#">Chat</a></li>
+        <li><a href="#">Voice</a></li>
+        <li><a href="#">Actions</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4 class="footer-heading">Features</h4>
+      <ul>
+        <li><a href="#">Memory Timeline</a></li>
+        <li><a href="#">Emotional TTS</a></li>
+        <li><a href="#">Personality Engine</a></li>
+        <li><a href="#">Night Mode</a></li>
+        <li><a href="#">Memory Engine</a></li>
+        <li><a href="#">MCP Integration</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4 class="footer-heading">Solutions</h4>
+      <ul>
+        <li><a href="#">For Students</a></li>
+        <li><a href="#">For Professionals</a></li>
+        <li><a href="#">For Developers</a></li>
+        <li><a href="#">For Creators</a></li>
+        <li><a href="#">For Educators</a></li>
+        <li><a href="#">For Researchers</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4 class="footer-heading">Resources</h4>
+      <ul>
+        <li><a href="#">Documentation</a></li>
+        <li><a href="#">Updates</a></li>
+        <li><a href="#">Blog</a></li>
+        <li><a href="#">Community</a></li>
+        <li><a href="#">How It Works</a></li>
+        <li><a href="#">Changelog</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4 class="footer-heading">Support</h4>
+      <ul>
+        <li><a href="#">FAQ</a></li>
+        <li><a href="#">Contact Us</a></li>
+        <li><a href="#">Help Center</a></li>
+        <li><a href="#">Community Forum</a></li>
+        <li><a href="#">Status Page</a></li>
+        <li><a href="#">Report a Bug</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4 class="footer-heading">Legal</h4>
+      <ul>
+        <li><a href="#">Privacy Policy</a></li>
+        <li><a href="#">Terms of Service</a></li>
+        <li><a href="#">DPA</a></li>
+        <li><a href="#">Cookie Policy</a></li>
+        <li><a href="#">Compliance</a></li>
+        <li><a href="#">Security</a></li>
+      </ul>
+    </div>
+  </div>
+  <!-- Bottom bar -->
+  <div class="footer-bottom">
+    <div class="footer-bottom-inner">
+      <div class="footer-copy">All Rights Reserved ©2026 Iyomi</div>
+      <div class="footer-legal">
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+        <a href="#">DPA</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- Scripts: GSAP, ScrollTrigger, Lenis, and custom -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="https://unpkg.com/lenis@1.1.14/dist/lenis.min.js"></script>
+<script src="scripts/landing.js"></script>
+<script>
+  // Clerk auth redirect — if already signed in, go straight to chat
+  (async () => {
+    const waitForClerk = () => new Promise(resolve => {
+      if (window.Clerk) return resolve();
+      const iv = setInterval(() => { if (window.Clerk) { clearInterval(iv); resolve(); } }, 50);
+    });
+    await waitForClerk();
+    await Clerk.load();
+    if (Clerk.user) {
+      window.location.replace('chat/index.html');
+      return;
+    }
+    document.body.style.visibility = 'visible';
+  })();
+</script>
+</body>
+</html>

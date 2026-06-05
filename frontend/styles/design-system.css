@@ -1,0 +1,870 @@
+/* ==========================================================================
+   IYOMI DESIGN SYSTEM — v1.0
+   Design System Lead / Frontend Architecture Layer
+   
+   STRUCTURE:
+   1.  Global Tokens       — raw values, no semantic meaning
+   2.  Semantic Tokens     — intent-mapped from global
+   3.  Component Tokens    — scoped per component
+   4.  Typography System   — scale, weights, families
+   5.  Spacing System      — scale + named contexts
+   6.  Motion Tokens       — easing, duration
+   7.  Elevation / Shadow  — depth language
+   8.  Border / Radius     — surface geometry
+   9.  Base Components     — reusable class patterns
+   10. Light Mode Theme     — [data-theme="light"] overrides
+   11. State Layer          — hover / active / focus / disabled
+   12. Utility Aliases      — shorthand convenience tokens
+   
+   USAGE:
+   — Never hardcode raw values in component CSS.
+   — Always reference a token (--token-name).
+   — For dark mode (default): tokens live on :root
+   — For light mode: tokens live on [data-theme="light"]
+   — Toggle via: document.documentElement.dataset.theme = 'light'
+   ========================================================================== */
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   §1  GLOBAL TOKENS  (raw, theme-agnostic)
+   These are NEVER used directly in components — only referenced by semantic
+   tokens. Changing a global token propagates everywhere automatically.
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+
+  /* — — GLOBAL COLOR PALETTE — — */
+
+  /* Neutral (Obsidian → Cream) */
+  --g-color-obsidian-950:   #04080F;   /* body bg dark    */
+  --g-color-obsidian-900:   #080C14;
+  --g-color-obsidian-800:   #0A0A0C;   /* dropdown base   */
+  --g-color-obsidian-700:   #0F0F13;
+  --g-color-obsidian-600:   #101014;
+  --g-color-obsidian-500:   #16161A;   /* dropdown-box bg */
+  --g-color-neutral-400:    #222222;   /* header border   */
+  --g-color-neutral-300:    #444444;   /* pillar label    */
+  --g-color-neutral-200:    #888888;   /* muted gray text */
+  --g-color-neutral-150:    #9ca3af;   /* product intro   */
+  --g-color-neutral-100:    #aaaaaa;   /* nav link idle   */
+  --g-color-cream-50:       #e8e6e0;   /* logo text       */
+  --g-color-cream-10:       #F7F7F2;   /* primary fg      */
+  --g-color-white:          #ffffff;
+
+  /* Ink (for light mode surfaces) */
+  --g-color-ink-900:        #0A0A0F;
+  --g-color-ink-800:        #1A1A22;
+  --g-color-ink-700:        #2C2C38;
+  --g-color-ink-600:        #3E3E50;
+
+  /* Parchment (light mode bg) */
+  --g-color-parchment-50:   #F9F8F6;
+  --g-color-parchment-100:  #F1EFE9;
+  --g-color-parchment-200:  #E5E2D8;
+  --g-color-parchment-300:  #D0CCBF;
+
+  /* Brand — Iris (accent) */
+  --g-color-iris-400:       #6c7cff;   /* glow / backlight */
+  --g-color-iris-500:       #7c8cff;   /* footer link      */
+  --g-color-iris-600:       #a0adff;   /* footer link hover */
+
+  /* Brand — Mint (status dot) */
+  --g-color-mint-400:       #6cffa2;   /* status dot       */
+
+  /* Brand — Mauve (Iyomi accent — soft pink) */
+  --g-color-mauve-300:      #E8B4C8;
+  --g-color-mauve-400:      #D4879F;
+  --g-color-mauve-500:      #B85C78;
+
+  /* — — GLOBAL OPACITY SCALE — — */
+  --g-opacity-5:    0.05;
+  --g-opacity-6:    0.06;
+  --g-opacity-7:    0.07;
+  --g-opacity-8:    0.08;
+  --g-opacity-10:   0.10;
+  --g-opacity-14:   0.14;
+  --g-opacity-15:   0.15;
+  --g-opacity-30:   0.30;
+  --g-opacity-35:   0.35;
+  --g-opacity-40:   0.40;
+  --g-opacity-50:   0.50;
+  --g-opacity-55:   0.55;
+  --g-opacity-60:   0.60;
+  --g-opacity-65:   0.65;
+  --g-opacity-75:   0.75;
+  --g-opacity-88:   0.88;
+  --g-opacity-90:   0.90;
+  --g-opacity-92:   0.92;
+  --g-opacity-97:   0.97;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   §2  SEMANTIC TOKENS  (DARK MODE — default :root)
+   Maps intent → global token. "What is this color FOR?"
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+
+  /* — Backgrounds — */
+  --color-bg-page:          var(--g-color-obsidian-950);   /* body             */
+  --color-bg-section-alt:   #000000;                       /* products, footer */
+  --color-bg-dropdown:      rgba(10, 10, 12, 0.97);        /* dropdown-inner   */
+  --color-bg-dropdown-box:  rgba(22, 22, 26, 0.98);        /* dropdown-box     */
+  --color-bg-frame:         rgba(20, 20, 24, 0.90);        /* frame gradient A */
+  --color-bg-frame-deep:    rgba(10, 10, 12, 0.95);        /* frame gradient B */
+  --color-bg-showcase:      rgba(16, 18, 22, 0.95);        /* showcase inner   */
+
+  /* — Foreground / Text — */
+  --color-text-primary:     var(--g-color-cream-10);       /* main body text   */
+  --color-text-secondary:   var(--g-color-neutral-100);    /* nav links idle   */
+  --color-text-muted:       var(--g-color-neutral-200);    /* manifesto muted  */
+  --color-text-subtle:      rgba(255, 255, 255, 0.40);     /* dropdown h4      */
+  --color-text-faint:       rgba(255, 255, 255, 0.30);     /* item subtitle    */
+  --color-text-logo:        var(--g-color-cream-50);       /* logo text        */
+  --color-text-on-primary:  var(--g-color-obsidian-950);   /* text on btn      */
+
+  /* — Semantic Text Roles — */
+  --color-text-heading:     var(--g-color-white);          /* section h2/h3    */
+  --color-text-body:        rgba(255, 255, 255, 0.66);     /* hero-sub, body   */
+  --color-text-caption:     rgba(247, 247, 242, 0.35);     /* eyebrow          */
+  --color-text-label:       var(--g-color-neutral-300);    /* pillar label     */
+  --color-text-meta:        rgba(255, 255, 255, 0.50);     /* footer legal     */
+  --color-text-footer-link: rgba(255, 255, 255, 0.50);
+  --color-text-dropdown-p:  rgba(255, 255, 255, 0.92);
+  --color-text-team-title:  rgba(255, 255, 255, 0.90);
+
+  /* — Borders / Dividers — */
+  --color-border-header:    var(--g-color-neutral-400);    /* header bottom    */
+  --color-border-strong:    rgba(255, 255, 255, 0.15);     /* nav divider      */
+  --color-border-medium:    rgba(255, 255, 255, 0.07);     /* dropdown-inner   */
+  --color-border-subtle:    rgba(255, 255, 255, 0.06);     /* dropdown-box     */
+  --color-border-faint:     rgba(255, 255, 255, 0.05);     /* frame border     */
+  --color-border-footer:    rgba(255, 255, 255, 0.06);     /* footer divider   */
+  --color-border-footer-bt: rgba(255, 255, 255, 0.05);     /* footer bottom    */
+  --color-border-col-sep:   rgba(255, 255, 255, 0.07);     /* dropdown col sep */
+
+  /* — Brand / Accent — */
+  --color-accent-iris:      var(--g-color-iris-500);       /* footer links     */
+  --color-accent-iris-hover:var(--g-color-iris-600);
+  --color-accent-mint:      var(--g-color-mint-400);       /* status dot       */
+  --color-accent-mauve:     var(--g-color-mauve-400);      /* Iyomi brand pink */
+
+  /* — Interactive States — */
+  --color-state-hover-bg:   rgba(255, 255, 255, 0.08);     /* nav / btn hover  */
+  --color-state-hover-link: rgba(255, 255, 255, 0.07);     /* dropdown link    */
+  --color-state-focus-ring: var(--g-color-iris-400);
+
+  /* — Buttons — */
+  --color-btn-primary-bg:        rgba(255, 255, 255, 0.75);
+  --color-btn-primary-bg-hover:  var(--g-color-cream-10);
+  --color-btn-primary-text:      var(--g-color-obsidian-950);
+  --color-btn-secondary-bg:      transparent;
+  --color-btn-secondary-text:    var(--g-color-neutral-100);
+  --color-btn-secondary-bg-hover:rgba(255, 255, 255, 0.08);
+  --color-btn-secondary-text-hover: var(--g-color-cream-10);
+
+  /* — Glows / Ambience — */
+  --color-glow-iris-a:     rgba(108, 124, 255, 0.14);      /* frame backlight  */
+  --color-glow-iris-b:     rgba(108, 124, 255, 0.08);
+  --color-glow-iris-c:     rgba(108, 124, 255, 0.08);      /* showcase         */
+
+  /* — Inset Highlights — */
+  --color-inset-highlight:  rgba(255, 255, 255, 0.04);     /* dropdown-inner   */
+  --color-inset-frame:      rgba(255, 255, 255, 0.03);     /* frame inner      */
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   §3  COMPONENT TOKENS  (scoped per component namespace)
+   Each component reads ONLY its own namespace. Never reads cross-component.
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+
+  /* — — NAV — — */
+  --nav-height:             32px;
+  --nav-padding-y:          20px;
+  --nav-link-px:            14px;
+  --nav-link-py:            6px;
+  --nav-link-fs:            15px;
+  --nav-link-ls:            -0.3px;
+  --nav-link-lh:            1.2;
+  --nav-link-radius:        8px;
+  --nav-link-color:         var(--color-text-secondary);
+  --nav-link-color-hover:   var(--color-text-primary);
+  --nav-link-bg-hover:      var(--color-state-hover-bg);
+  --nav-divider-w:          1px;
+  --nav-divider-h:          20px;
+  --nav-divider-color:      var(--color-border-strong);
+  --nav-gap:                30px;
+  --nav-links-gap:          6px;
+
+  /* — — DROPDOWN — — */
+  --dropdown-panel-w:       760px;
+  --dropdown-panel-radius:  16px;
+  --dropdown-panel-padding: 6px;
+  --dropdown-panel-blur:    20px;
+  --dropdown-box-radius:    12px;
+  --dropdown-box-padding:   6px;
+  --dropdown-col-padding:   6px;
+  --dropdown-link-px:       16px;
+  --dropdown-link-py:       14px;
+  --dropdown-link-radius:   8px;
+  --dropdown-offset-y:      8px;
+  --dropdown-transition:    0.18s ease;
+  --dropdown-translate-y:   6px;
+
+  /* — — BUTTON — — */
+  --btn-height:             32px;
+  --btn-px:                 16px;
+  --btn-py:                 8px;
+  --btn-fs:                 15px;
+  --btn-fw:                 500;
+  --btn-lh:                 1.2;
+  --btn-ls:                 -0.3px;
+  --btn-radius:             8px;
+  --btn-transition:         0.2s;
+
+  /* — — HERO — — */
+  --hero-title-fs:          68px;
+  --hero-title-fw:          600;
+  --hero-title-lh:          1.05;
+  --hero-title-ls:          -0.06em;
+  --hero-sub-fs:            16px;
+  --hero-sub-lh:            1.2;
+  --hero-sub-ls:            -0.3px;
+  --hero-eyebrow-fs:        14px;
+  --hero-eyebrow-ls:        0.02em;
+  --hero-gap:               24px;
+  --hero-actions-gap:       16px;
+  --hero-padding-x:         120px;
+  --hero-padding-y:         80px;
+
+  /* — — FRAME — — */
+  --frame-radius:           12px;
+  --frame-max-w:            1300px;
+  --frame-height:           720px;
+  --frame-blur:             20px;
+  --frame-glow-h:           65%;
+  --frame-fog-h:            75%;
+
+  /* — — PRODUCTS SECTION — — */
+  --products-padding-y:     160px;
+  --products-title-fs:      64px;
+  --products-title-fw:      500;
+  --products-title-ls:      -0.05em;
+  --product-title-fs:       40px;
+  --product-title-fw:       600;
+  --product-title-ls:       -0.04em;
+  --product-heading-fs:     48px;
+  --product-intro-fs:       18px;
+  --product-intro-lh:       1.6;
+  --product-header-gap:     80px;
+
+  /* — — MANIFESTO — — */
+  --manifesto-padding-y:    160px;
+  --manifesto-word-fs:      48px;
+  --manifesto-word-lh:      1.0;
+  --manifesto-word-ls:      -0.04em;
+  --manifesto-word-fw:      400;
+
+  /* — — PILLARS — — */
+  --pillar-grid-cols:       3;
+  --pillar-gap:             60px;
+  --pillar-label-fs:        12px;
+  --pillar-label-ls:        1px;
+  --pillar-label-mb:        32px;
+  --pillar-title-fs:        21px;
+  --pillar-title-fw:        500;
+  --pillar-title-ls:        -0.02em;
+  --pillar-title-mb:        14px;
+  --pillar-desc-fs:         15px;
+  --pillar-desc-lh:         1.2;
+  --pillar-desc-ls:         -0.3px;
+  --pillar-illus-size:      180px;
+  --pillar-illus-opacity:   0.2;
+
+  /* — — FOOTER — — */
+  --footer-padding-top:     120px;
+  --footer-padding-bottom:  80px;
+  --footer-max-w:           1300px;
+  --footer-grid-cols:       6;
+  --footer-gap:             60px;
+  --footer-heading-fs:      16px;
+  --footer-link-fs:         15px;
+  --footer-copy-fs:         14px;
+  --footer-bottom-mt:       80px;
+  --footer-brand-pb:        80px;
+
+  /* — — CONTAINER — — */
+  --container-max-w:        1300px;
+  --container-px:           80px;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   §4  TYPOGRAPHY SYSTEM
+   Scale follows a Minor Third (1.25x) modular scale.
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* — Families — */
+  --font-sans:         'Inter', sans-serif;              /* primary UI font     */
+  --font-display:      'Yuji Hentaigana Akari', cursive; /* logo / brand glyph  */
+  --font-mono:         'Berkeley Mono', monospace;        /* pillar labels / code*/
+
+  /* — Scale — */
+  --text-xs:    12px;     /* pillar labels, dropdown group h4 footer copy  */
+  --text-sm:    14px;     /* eyebrow, dropdown text, footer legal          */
+  --text-base:  15px;     /* nav links, body, footer links                 */
+  --text-md:    16px;     /* hero-sub, product-description                 */
+  --text-lg:    18px;     /* product-intro                                 */
+  --text-xl:    21px;     /* pillar-title                                  */
+  --text-2xl:   24px;     /* footer logo, tagline                          */
+  --text-3xl:   30px;     /* brand glyph (Yuji)                            */
+  --text-4xl:   40px;     /* product-title                                 */
+  --text-5xl:   48px;     /* manifesto words, product-heading              */
+  --text-6xl:   64px;     /* products-header h2                            */
+  --text-hero:  68px;     /* hero-title                                    */
+
+  /* — Weights — */
+  --fw-regular:  400;
+  --fw-medium:   500;
+  --fw-semibold: 600;
+  --fw-bold:     700;
+  --fw-black:    800;
+
+  /* — Line Heights — */
+  --lh-tight:    1.0;     /* manifesto words                               */
+  --lh-snug:     1.05;    /* hero title                                    */
+  --lh-body:     1.2;     /* nav, buttons, hero-sub                        */
+  --lh-relaxed:  1.3;     /* dropdown descriptions                         */
+  --lh-loose:    1.6;     /* product intro                                 */
+
+  /* — Letter Spacing — */
+  --ls-tight-5:  -0.05em;  /* hero title, products h2                     */
+  --ls-tight-4:  -0.04em;  /* manifesto, product-title                    */
+  --ls-tight-2:  -0.02em;  /* pillar-title                                */
+  --ls-tight-3px:-0.3px;   /* nav, body, buttons                          */
+  --ls-normal:   0em;
+  --ls-wide-02:  0.02em;   /* eyebrow                                     */
+  --ls-wide-1:   1px;      /* pillar label (mono)                         */
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   §5  SPACING SYSTEM
+   4px base unit, T-shirt size aliases for named contexts.
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* — Raw Scale (4px grid) — */
+  --space-1:    4px;
+  --space-2:    8px;
+  --space-3:    12px;
+  --space-4:    16px;
+  --space-5:    20px;
+  --space-6:    24px;
+  --space-7:    28px;
+  --space-8:    32px;
+  --space-10:   40px;
+  --space-12:   48px;
+  --space-14:   56px;
+  --space-15:   60px;
+  --space-16:   64px;
+  --space-20:   80px;
+  --space-24:   96px;
+  --space-30:   120px;
+  --space-40:   160px;
+
+  /* — Named Contexts — */
+  --space-section-y:        var(--space-40);    /* section padding-y           */
+  --space-container-x:      var(--space-20);    /* container side padding      */
+  --space-hero-x:           120px;              /* hero horizontal padding     */
+  --space-hero-y:           var(--space-20);    /* hero vertical padding       */
+  --space-card-px:          var(--space-4);     /* dropdown card inner x       */
+  --space-card-py:          var(--space-4);     /* dropdown card inner y       */
+  --space-stack-sm:         var(--space-2);     /* tight vertical stacks       */
+  --space-stack-md:         var(--space-6);     /* standard vertical gap       */
+  --space-stack-lg:         var(--space-8);     /* section header margin       */
+  --space-inline-sm:        var(--space-2);     /* icon + text gap             */
+  --space-inline-md:        var(--space-6);     /* hero actions gap            */
+  --space-nav-actions:      var(--space-2);     /* gap between nav btn         */
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   §6  MOTION TOKENS
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* — Durations — */
+  --duration-instant:   100ms;
+  --duration-fast:      150ms;
+  --duration-base:      180ms;
+  --duration-medium:    200ms;
+  --duration-slow:      300ms;
+
+  /* — Easings — */
+  --ease-out:           ease-out;
+  --ease-in-out:        ease-in-out;
+  --ease-spring:        cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* — Named Transitions — */
+  --transition-color:       color var(--duration-medium) var(--ease-out);
+  --transition-bg:          background var(--duration-medium) var(--ease-out);
+  --transition-all-fast:    all var(--duration-base) var(--ease-out);
+  --transition-dropdown:    opacity var(--duration-base) var(--ease-out),
+                            transform var(--duration-base) var(--ease-out);
+
+  /* — GSAP Scroll (reference values, used in script.js) — */
+  /* scrub: 0.8 | stagger.each: 0.04 | ease: power2.out  */
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   §7  ELEVATION / SHADOW SYSTEM
+   Named by depth level, not pixel values.
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* — Level 1: Surface lift (cards, dropdowns) — */
+  --shadow-surface:
+    0 4px 12px rgba(0, 0, 0, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+
+  /* — Level 2: Float (panels, overlays) — */
+  --shadow-float:
+    0 24px 64px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+
+  /* — Level 3: Frame / deep element — */
+  --shadow-frame:
+    0 10px 20px rgba(0, 0, 0, 0.55),
+    0 30px 60px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+
+  /* — None — */
+  --shadow-none: none;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   §8  BORDER / RADIUS SYSTEM
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* — Radii — */
+  --radius-sm:    6px;     /* small pills, tags                           */
+  --radius-md:    8px;     /* nav links, buttons, dropdown-link           */
+  --radius-lg:    12px;    /* dropdown-box, frame-inner, product-frame    */
+  --radius-xl:    16px;    /* dropdown-inner panel                        */
+  --radius-2xl:   20px;    /* large cards                                 */
+  --radius-full:  9999px;  /* status dot, pills                           */
+
+  /* — Borders — */
+  --border-faint:   1px solid var(--color-border-faint);
+  --border-subtle:  1px solid var(--color-border-subtle);
+  --border-medium:  1px solid var(--color-border-medium);
+  --border-strong:  1px solid var(--color-border-strong);
+  --border-header:  1px solid var(--color-border-header);
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   §9  BASE COMPONENTS
+   Drop-in class patterns. Use these, extend via component tokens.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* — — CONTAINER — — */
+.ds-container {
+  max-width: var(--container-max-w);
+  margin: 0 auto;
+  padding: 0 var(--container-px);
+}
+
+/* — — BUTTON BASE — — */
+.ds-btn {
+  height:         var(--btn-height);
+  padding:        var(--btn-py) var(--btn-px);
+  border-radius:  var(--radius-md);
+  font-size:      var(--btn-fs);
+  font-weight:    var(--btn-fw);
+  line-height:    var(--btn-lh);
+  letter-spacing: var(--btn-ls);
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  transition: var(--transition-bg), var(--transition-color);
+  text-decoration: none;
+}
+
+/* Primary */
+.ds-btn--primary {
+  background: var(--color-btn-primary-bg);
+  color:      var(--color-btn-primary-text);
+}
+.ds-btn--primary:hover {
+  background: var(--color-btn-primary-bg-hover);
+}
+
+/* Secondary */
+.ds-btn--secondary {
+  background: var(--color-btn-secondary-bg);
+  color:      var(--color-btn-secondary-text);
+}
+.ds-btn--secondary:hover {
+  background: var(--color-btn-secondary-bg-hover);
+  color:      var(--color-btn-secondary-text-hover);
+}
+
+/* Ghost (transparent, subtle border) */
+.ds-btn--ghost {
+  background: transparent;
+  color:      var(--color-text-secondary);
+  border:     1px solid var(--color-border-medium);
+}
+.ds-btn--ghost:hover {
+  background: var(--color-state-hover-bg);
+  color:      var(--color-text-primary);
+  border-color: var(--color-border-strong);
+}
+
+/* — — NAV LINK BASE — — */
+.ds-nav-link {
+  color:          var(--nav-link-color);
+  text-decoration:none;
+  font-size:      var(--nav-link-fs);
+  padding:        var(--nav-link-py) var(--nav-link-px);
+  height:         var(--nav-height);
+  line-height:    var(--nav-link-lh);
+  letter-spacing: var(--nav-link-ls);
+  display:        inline-flex;
+  align-items:    center;
+  border-radius:  var(--nav-link-radius);
+  transition:     var(--transition-bg), var(--transition-color);
+}
+.ds-nav-link:hover,
+.ds-nav-link.is-active {
+  background: var(--nav-link-bg-hover);
+  color:      var(--nav-link-color-hover);
+}
+
+/* — — DIVIDER — — */
+.ds-divider-v {
+  width:      var(--nav-divider-w);
+  height:     var(--nav-divider-h);
+  background: var(--nav-divider-color);
+  flex-shrink:0;
+}
+
+.ds-divider-h {
+  width:      100%;
+  height:     1px;
+  background: var(--color-border-footer);
+}
+
+/* — — STATUS DOT — — */
+.ds-dot {
+  width:         6px;
+  height:        6px;
+  border-radius: var(--radius-full);
+  flex-shrink:   0;
+}
+.ds-dot--active  { background: var(--color-accent-mint); }
+.ds-dot--accent  { background: var(--color-accent-iris); }
+.ds-dot--neutral { background: var(--color-text-muted);  }
+
+/* — — SECTION CONTAINER — — */
+.ds-section {
+  padding: var(--space-section-y) 0;
+}
+
+/* — — LABEL / EYEBROW — — */
+.ds-eyebrow {
+  font-family: var(--font-mono);
+  font-size:   var(--text-xs);
+  letter-spacing: var(--ls-wide-1);
+  color:       var(--color-text-label);
+  text-transform: uppercase;
+}
+
+/* — — FOCUS RING (accessibility) — — */
+.ds-focus-ring:focus-visible {
+  outline:        2px solid var(--color-state-focus-ring);
+  outline-offset: 2px;
+  border-radius:  var(--radius-md);
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   §10  LIGHT MODE THEME  [data-theme="light"]
+   Override ONLY semantic tokens — global tokens unchanged.
+   JS: document.documentElement.dataset.theme = 'light' / 'dark'
+   ───────────────────────────────────────────────────────────────────────── */
+
+[data-theme="light"] {
+
+  /* — Backgrounds — */
+  --color-bg-page:          var(--g-color-parchment-50);
+  --color-bg-section-alt:   var(--g-color-parchment-100);
+  --color-bg-dropdown:      rgba(252, 251, 249, 0.97);
+  --color-bg-dropdown-box:  rgba(246, 244, 240, 0.98);
+  --color-bg-frame:         rgba(235, 232, 224, 0.90);
+  --color-bg-frame-deep:    rgba(220, 216, 208, 0.95);
+  --color-bg-showcase:      rgba(240, 238, 233, 0.95);
+
+  /* — Foreground / Text — */
+  --color-text-primary:     var(--g-color-ink-900);
+  --color-text-secondary:   var(--g-color-ink-700);
+  --color-text-muted:       var(--g-color-ink-600);
+  --color-text-subtle:      rgba(10, 10, 15, 0.45);
+  --color-text-faint:       rgba(10, 10, 15, 0.35);
+  --color-text-logo:        var(--g-color-ink-900);
+  --color-text-on-primary:  var(--g-color-parchment-50);
+
+  --color-text-heading:     var(--g-color-ink-900);
+  --color-text-body:        rgba(10, 10, 15, 0.72);
+  --color-text-caption:     rgba(10, 10, 15, 0.40);
+  --color-text-label:       rgba(10, 10, 15, 0.45);
+  --color-text-meta:        rgba(10, 10, 15, 0.50);
+  --color-text-footer-link: rgba(10, 10, 15, 0.55);
+  --color-text-dropdown-p:  rgba(10, 10, 15, 0.90);
+  --color-text-team-title:  rgba(10, 10, 15, 0.88);
+
+  /* — Borders / Dividers — */
+  --color-border-header:    var(--g-color-parchment-200);
+  --color-border-strong:    rgba(10, 10, 15, 0.18);
+  --color-border-medium:    rgba(10, 10, 15, 0.10);
+  --color-border-subtle:    rgba(10, 10, 15, 0.07);
+  --color-border-faint:     rgba(10, 10, 15, 0.06);
+  --color-border-footer:    rgba(10, 10, 15, 0.08);
+  --color-border-footer-bt: rgba(10, 10, 15, 0.06);
+  --color-border-col-sep:   rgba(10, 10, 15, 0.08);
+
+  /* — Brand / Accent — */
+  --color-accent-iris:      #5060e8;
+  --color-accent-iris-hover:#3a4cc8;
+  --color-accent-mint:      #2bb563;
+  --color-accent-mauve:     var(--g-color-mauve-500);
+
+  /* — Interactive States — */
+  --color-state-hover-bg:   rgba(10, 10, 15, 0.06);
+  --color-state-hover-link: rgba(10, 10, 15, 0.05);
+  --color-state-focus-ring: var(--g-color-iris-400);
+
+  /* — Buttons — */
+  --color-btn-primary-bg:        rgba(10, 10, 15, 0.88);
+  --color-btn-primary-bg-hover:  var(--g-color-ink-900);
+  --color-btn-primary-text:      var(--g-color-parchment-50);
+  --color-btn-secondary-bg:      transparent;
+  --color-btn-secondary-text:    var(--g-color-ink-700);
+  --color-btn-secondary-bg-hover:rgba(10, 10, 15, 0.06);
+  --color-btn-secondary-text-hover: var(--g-color-ink-900);
+
+  /* — Glows — */
+  --color-glow-iris-a:     rgba(80, 96, 232, 0.08);
+  --color-glow-iris-b:     rgba(80, 96, 232, 0.05);
+  --color-glow-iris-c:     rgba(80, 96, 232, 0.05);
+
+  /* — Inset Highlights — */
+  --color-inset-highlight: rgba(255, 255, 255, 0.60);
+  --color-inset-frame:     rgba(255, 255, 255, 0.40);
+
+  /* — Shadows — */
+  --shadow-surface:
+    0 4px 12px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.70);
+
+  --shadow-float:
+    0 24px 64px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.80);
+
+  --shadow-frame:
+    0 10px 20px rgba(0, 0, 0, 0.10),
+    0 30px 60px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.60);
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   §11  ALL INTERACTION STATES
+   Consolidated state layer — every interactive element.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* — — HOVER — — */
+/* Defined inline on component tokens above.                               */
+/* Pattern: component:hover { background: var(--color-state-hover-bg) }    */
+
+/* — — FOCUS VISIBLE — — */
+a:focus-visible,
+button:focus-visible,
+[tabindex]:focus-visible {
+  outline:        2px solid var(--color-state-focus-ring);
+  outline-offset: 3px;
+  border-radius:  var(--radius-md);
+}
+
+/* — — ACTIVE (pressed) — — */
+.ds-btn:active {
+  transform: scale(0.97);
+  transition: transform var(--duration-instant) var(--ease-out);
+}
+
+/* — — DISABLED — — */
+.ds-btn[disabled],
+.ds-btn[aria-disabled="true"] {
+  opacity:        0.38;
+  cursor:         not-allowed;
+  pointer-events: none;
+}
+
+/* — — LOADING — — */
+.ds-btn--loading {
+  position:       relative;
+  color:          transparent;
+  pointer-events: none;
+}
+.ds-btn--loading::after {
+  content:       "";
+  position:      absolute;
+  inset:         0;
+  margin:        auto;
+  width:         14px;
+  height:        14px;
+  border:        2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: var(--radius-full);
+  animation:     ds-spin 0.6s linear infinite;
+}
+@keyframes ds-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* — — SELECTED / ACTIVE NAV — — */
+.ds-nav-link.is-active,
+.nav-item.is-open > a {
+  background: var(--nav-link-bg-hover);
+  color:      var(--nav-link-color-hover);
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   §12  UTILITY ALIASES  (shorthand convenience tokens)
+   Import patterns for quick composition.
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Text shorthand */
+  --t-primary:    var(--color-text-primary);
+  --t-secondary:  var(--color-text-secondary);
+  --t-muted:      var(--color-text-muted);
+  --t-heading:    var(--color-text-heading);
+  --t-body:       var(--color-text-body);
+  --t-caption:    var(--color-text-caption);
+  --t-accent:     var(--color-accent-iris);
+
+  /* Background shorthand */
+  --bg-page:      var(--color-bg-page);
+  --bg-alt:       var(--color-bg-section-alt);
+  --bg-surface:   var(--color-bg-dropdown);
+
+  /* Border shorthand */
+  --b-faint:      var(--border-faint);
+  --b-subtle:     var(--border-subtle);
+  --b-medium:     var(--border-medium);
+}
+
+
+/* ==========================================================================
+   USAGE QUICK REFERENCE
+   ==========================================================================
+
+   HOW TO USE THIS FILE IN styles.css:
+   1. Import this file FIRST, before styles.css
+      <link rel="stylesheet" href="iyomi-design-system.css">
+      <link rel="stylesheet" href="styles.css">
+
+   2. Replace every hardcoded value with its token:
+
+      BEFORE:  color: #aaa;
+      AFTER:   color: var(--color-text-secondary);
+
+      BEFORE:  background: rgba(255,255,255,0.08);
+      AFTER:   background: var(--color-state-hover-bg);
+
+      BEFORE:  font-size: 15px; letter-spacing: -0.3px; line-height: 1.2;
+      AFTER:   font-size: var(--text-base); letter-spacing: var(--ls-tight-3px); line-height: var(--lh-body);
+
+      BEFORE:  border-radius: 8px;
+      AFTER:   border-radius: var(--radius-md);
+
+      BEFORE:  transition: background 0.2s, color 0.2s;
+      AFTER:   transition: var(--transition-bg), var(--transition-color);
+
+   3. Toggle light mode:
+      document.documentElement.dataset.theme = 'light';
+      document.documentElement.dataset.theme = 'dark'; // (or remove attr)
+
+   4. New component? Declare its tokens in §3 under its namespace.
+      Never hardcode raw values in the component block itself.
+
+   ==========================================================================
+   COMPONENT TOKEN MAP
+   ==========================================================================
+
+   Component         Token Prefix           Section
+   ──────────────────────────────────────────────────
+   Navigation        --nav-*                §3
+   Dropdown          --dropdown-*           §3
+   Button            --btn-*                §3, §9
+   Hero              --hero-*               §3
+   Frame             --frame-*              §3
+   Products section  --products-*, --product-*  §3
+   Manifesto         --manifesto-*          §3
+   Pillars           --pillar-*             §3
+   Footer            --footer-*             §3
+   Container         --container-*          §3, §9
+
+   ==========================================================================
+   CODE SNIPPETS
+   ==========================================================================
+
+   PRIMARY BUTTON:
+   <button class="ds-btn ds-btn--primary">Get started</button>
+
+   SECONDARY BUTTON:
+   <button class="ds-btn ds-btn--secondary">Sign in</button>
+
+   GHOST BUTTON:
+   <button class="ds-btn ds-btn--ghost">Learn more</button>
+
+   LOADING BUTTON:
+   <button class="ds-btn ds-btn--primary ds-btn--loading" disabled>…</button>
+
+   STATUS DOT (active):
+   <span class="ds-dot ds-dot--active"></span>
+
+   EYEBROW LABEL:
+   <span class="ds-eyebrow">FIG.01</span>
+
+   SECTION WRAPPER:
+   <section class="ds-section">
+     <div class="ds-container">…</div>
+   </section>
+
+   VERTICAL DIVIDER:
+   <div class="ds-divider-v"></div>
+
+   HORIZONTAL DIVIDER:
+   <div class="ds-divider-h"></div>
+
+   LIGHT MODE TOGGLE (JS):
+   const root = document.documentElement;
+   const isDark = root.dataset.theme !== 'light';
+   root.dataset.theme = isDark ? 'light' : 'dark';
+
+   ========================================================================== */

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Log in - Iyomi</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../../styles/auth.css"/>
+  <link rel="stylesheet" />
+  <link rel="icon" href="../../assets/favicon-light.svg" media="(prefers-color-scheme: light)">
+  <link rel="icon" href="../../assets/favicon-dark.svg" media="(prefers-color-scheme: dark)">
+  <!-- CLERK -->
+  <script
+    defer
+    crossorigin="anonymous"
+    src="https://comic-stallion-44.clerk.accounts.dev/npm/@clerk/ui@1/dist/ui.browser.js"
+    type="text/javascript">
+  </script>
+  <script
+    defer
+    crossorigin="anonymous"
+    data-clerk-publishable-key="pk_test_Y29taWMtc3RhbGxpb24tNDQuY2xlcmsuYWNjb3VudHMuZGV2JA"
+    src="https://comic-stallion-44.clerk.accounts.dev/npm/@clerk/clerk-js@6/dist/clerk.browser.js"
+    type="text/javascript">
+  </script>
+
+  <style>
+    .auth-card { opacity: 0; transition: opacity 0.25s ease; }
+    .auth-card.clerk-ready { opacity: 1; }
+  </style>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+
+  <a href="../../index.html" class="auth-back">
+    <i data-lucide="arrow-left" style="width:14px;height:14px;"></i>
+    Back to home
+  </a>
+
+  <div class="auth-card">
+
+    <div class="auth-logo">
+      <img src="../../assets/logo/light.png" alt="Iyomi" class="auth-logo-mark-img" />
+      <span class="auth-logo-name">Iyomi</span>
+    </div>
+
+    <div id="clerk-sign-in"></div>
+
+    <div class="auth-trust" style="margin-top: 20px;">
+      <div class="auth-trust-item"><i data-lucide="check" style="width:12px;height:12px;"></i>Free to use</div>
+      <div class="auth-trust-item"><i data-lucide="check" style="width:12px;height:12px;"></i>End-to-end secure</div>
+      <div class="auth-trust-item"><i data-lucide="check" style="width:12px;height:12px;"></i>Private by design</div>
+    </div>
+
+  </div>
+
+  <script>
+    const waitForClerk = () => new Promise(resolve => {
+      if (window.Clerk) return resolve();
+      const iv = setInterval(() => { if (window.Clerk) { clearInterval(iv); resolve(); } }, 50);
+    });
+
+    window.addEventListener('load', async function () {
+      await waitForClerk();
+      await Clerk.load({ ui: { ClerkUI: window.__internal_ClerkUICtor } });
+
+      if (Clerk.user) {
+        window.location.href = '../../chat/index.html';
+        return;
+      }
+
+      Clerk.mountSignIn(document.getElementById('clerk-sign-in'), {
+        afterSignInUrl: '../../chat/index.html',
+        signUpUrl: 'signup.html',
+      });
+
+      document.querySelector('.auth-card').classList.add('clerk-ready');
+    });
+  </script>
+
+  <script>document.addEventListener("DOMContentLoaded", () => lucide.createIcons());</script>
+</body>
+</html>

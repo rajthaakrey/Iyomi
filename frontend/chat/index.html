@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Iyomi Chat</title>
+ <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Yuji+Mai&family=Yuji+Syuku&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Yuji+Hentaigana+Akari&family=Yuji+Mai&family=Yuji+Syuku&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles/chat.css" />
+  <link rel="icon" href="../assets/favicon-light.svg" media="(prefers-color-scheme: light)">
+  <link rel="icon" href="../assets/favicon-dark.svg" media="(prefers-color-scheme: dark)">
+  <script defer crossorigin="anonymous"
+  src="https://comic-stallion-44.clerk.accounts.dev/npm/@clerk/ui@1/dist/ui.browser.js">
+</script>
+<script defer crossorigin="anonymous"
+data-clerk-publishable-key="pk_test_Y29taWMtc3RhbGxpb24tNDQuY2xlcmsuYWNjb3VudHMuZGV2JA"
+  src="https://comic-stallion-44.clerk.accounts.dev/npm/@clerk/clerk-js@6/dist/clerk.browser.js">
+</script>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ═══════════════════════════
+       LEFT SIDEBAR
+  ═══════════════════════════ -->
+  <aside class="sidebar-left" id="sidebarLeft">
+
+    <!-- top toolbar: logo + new chat -->
+    <div class="sl-toolbar">
+      <a href="../index.html" class="nav-logo" aria-label="Iyomi home">
+        <span class="yuji-hentaiganaa-akari-regular">ゆ</span>
+      </a>
+      <div class="sl-toolbar-actions">
+        <button class="tbtn" id="newChatBtn" title="New chat">
+          <i data-lucide="square-pen"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- top nav links (ChatGPT-style) -->
+    <div class="sl-top-nav">
+      <button class="sl-nav-link" id="newChatLink">
+        <i data-lucide="square-pen"></i>
+        <span>New chat</span>
+      </button>
+
+      <!-- search: button transforms into input inline -->
+      <div class="sl-search-row" id="slSearchRow">
+        <button class="sl-nav-link sl-search-trigger" id="searchChatsLink">
+          <i data-lucide="search"></i>
+          <span>Search chats</span>
+        </button>
+        <label class="sl-search-inline" id="slSearchInline">
+          <i data-lucide="search" class="sl-search-ic"></i>
+          <input
+            type="text"
+            class="sl-search-input"
+            id="chatSearch"
+            placeholder="Search chats…"
+          />
+          <button class="sl-search-close" id="slSearchClose" aria-label="Close search">
+            <i data-lucide="x"></i>
+          </button>
+        </label>
+      </div>
+    </div>
+
+    <!-- chat history -->
+    <nav class="sl-nav" id="slNav">
+      <div class="sl-empty-history" id="slEmptyHistory">
+        <p>No chats</p>
+        <span>Start a conversation to see your history here.</span>
+      </div>
+    </nav>
+
+    <!-- bottom user panel -->
+    <div class="sl-bottom">
+      <div class="sl-user-panel" id="slUserPanel">
+
+        <!-- floating popover menu (appears above trigger) -->
+        <div class="sl-user-popover" id="slUserPopover">
+          <button class="sl-popover-user" id="slPopoverUser">
+            <div class="sl-popover-avatar" id="slPopoverAvatar">?</div>
+            <div class="sl-popover-info">
+              <div class="sl-popover-name" id="slPopoverName">Loading…</div>
+              <div class="sl-popover-email" id="slPopoverEmail"></div>
+            </div>
+            <i data-lucide="chevron-right" class="sl-popover-chevron"></i>
+          </button>
+          <div class="sl-popover-divider"></div>
+          <a href="#" class="sl-popover-item" id="slSettingsBtn">
+            <i data-lucide="settings"></i>
+            <span>Settings</span>
+          </a>
+          <a href="#" class="sl-popover-item" id="slHelpBtn">
+            <i data-lucide="help-circle"></i>
+            <span>Help</span>
+            <i data-lucide="chevron-right" class="sl-popover-chevron"></i>
+          </a>
+          <div class="sl-popover-item sl-theme-row">
+            <i data-lucide="moon"></i>
+            <span>Dark mode</span>
+            <button class="theme-pill" id="themePill" title="Toggle dark mode" aria-label="Toggle dark mode"></button>
+          </div>
+          <div class="sl-popover-divider"></div>
+          <button class="sl-popover-item sl-signout" id="slSignOutBtn">
+            <i data-lucide="log-out"></i>
+            <span>Log out</span>
+          </button>
+        </div>
+
+        <!-- trigger row — always visible at bottom -->
+        <button class="sl-user-trigger" id="slUserTrigger">
+          <div class="sl-user-avatar" id="slUserAvatar">?</div>
+          <div class="sl-user-info">
+            <div class="sl-user-name" id="slUserName">Loading…</div>
+          </div>
+        </button>
+
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ═══════════════════════════
+       MAIN CHAT AREA
+  ═══════════════════════════ -->
+  <main class="chat-main" id="chatMain">
+
+    <!-- topbar — left toggle lives here, blended into main area -->
+    <div class="chat-topbar">
+
+      <div class="topbar-left">
+        <!-- toggle left sidebar — sits in main area like right toggle -->
+        <button class="tbtn" id="toggleLeft" title="Toggle sidebar">
+          <i data-lucide="panel-left"></i>
+        </button>
+        <span class="topbar-title" id="topbarTitle">New Chat</span>
+      </div>
+
+      <div class="topbar-center">
+        <div class="mode-switcher">
+          <button class="mode-btn mode-btn--active" data-mode="chat">
+            <i data-lucide="message-circle"></i>
+            Chat
+          </button>
+          <button class="mode-btn" data-mode="voice">
+            <i data-lucide="mic"></i>
+            Voice
+          </button>
+          <button class="mode-btn" data-mode="actions">
+            <i data-lucide="zap"></i>
+            Actions
+          </button>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <!-- toggle right sidebar — only one button, no duplicate in sidebar -->
+        <button class="tbtn" id="toggleRight" title="Toggle saved">
+          <i data-lucide="panel-right"></i>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- welcome state -->
+    <div class="welcome-state" id="welcomeState">
+      <div class="welcome-inner">
+        <h1 class="welcome-heading">
+          How may I help you, <span class="welcome-name">Raj</span>?
+        </h1>
+        <p class="welcome-sub">Ask me anything. I remember. I understand. I'm here.</p>
+        <div class="chip-grid">
+          <button class="chip" data-text="How's my day looking?">
+            <i data-lucide="sun"></i>
+            <span>How's my day looking?</span>
+          </button>
+          <button class="chip" data-text="Help me think through something">
+            <i data-lucide="brain"></i>
+            <span>Help me think through something</span>
+          </button>
+          <button class="chip" data-text="I just need to talk">
+            <i data-lucide="heart"></i>
+            <span>I just need to talk</span>
+          </button>
+          <button class="chip" data-text="Plan my tasks for today">
+            <i data-lucide="list-todo"></i>
+            <span>Plan my tasks for today</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- messages -->
+    <div class="messages-area" id="messagesArea" style="display:none">
+      <div class="messages-inner" id="messagesInner"></div>
+    </div>
+
+    <!-- input -->
+    <div class="input-bar">
+      <div class="input-pill" id="inputPill">
+
+        <!-- attachment previews row (hidden until files added) -->
+        <div class="attachment-previews" id="attachmentPreviews"></div>
+
+        <!-- textarea row -->
+        <div class="pill-body">
+          <textarea
+            class="pill-input"
+            id="chatInput"
+            placeholder="Ask anything (Shift + Enter for new line)"
+            rows="1"
+          ></textarea>
+        </div>
+
+        <!-- footer toolbar -->
+        <div class="pill-bottom">
+          <div class="pill-bottom-left">
+
+            <!-- + menu -->
+            <div class="action-menu-wrap" id="actionMenuWrap">
+              <button class="pill-btn action-menu-trigger" id="actionMenuTrigger" title="Add">
+                <i data-lucide="plus"></i>
+              </button>
+              <div class="action-menu-dropdown" id="actionMenuDropdown">
+                <label class="action-menu-item" for="fileInput">
+                  <i data-lucide="paperclip"></i>
+                  <span>Attach files</span>
+                </label>
+                <label class="action-menu-item" for="photoInput">
+                  <i data-lucide="image"></i>
+                  <span>Add photos</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- hidden file inputs -->
+            <input type="file" id="fileInput" multiple accept="*/*" style="display:none" />
+            <input type="file" id="photoInput" multiple accept="image/*" style="display:none" />
+
+            <!-- model trigger -->
+            <button class="model-trigger" id="modelTrigger">
+              <i data-lucide="cpu"></i>
+              <span id="modelTriggerLabel">Llama 3.3 70B</span>
+              <i data-lucide="chevron-down" class="model-trigger-chevron"></i>
+            </button>
+
+            <!-- persona trigger -->
+            <button class="model-trigger" id="personaTrigger">
+              <i data-lucide="user-circle"></i>
+              <span id="personaTriggerLabel">Iyomi</span>
+              <i data-lucide="chevron-down" class="model-trigger-chevron"></i>
+            </button>
+
+          </div>
+          <div class="pill-bottom-right">
+            <!-- mic button -->
+            <button class="pill-btn mic-btn" id="micBtn" title="Voice input">
+              <i data-lucide="mic"></i>
+            </button>
+            <!-- send -->
+            <button class="pill-send" id="sendBtn" disabled>
+              <i data-lucide="arrow-up"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+      <p class="input-disclaimer">Iyomi can make mistakes. Important decisions deserve a second look.</p>
+    </div>
+
+  </main>
+
+  <!-- ═══════════════════════════
+       MODEL PICKER MODAL
+  ═══════════════════════════ -->
+  <div class="model-modal-overlay" id="modelModalOverlay">
+    <div class="model-modal" id="modelModal">
+      <div class="model-modal-search">
+        <i data-lucide="search"></i>
+        <input type="text" id="modelSearchInput" placeholder="Search models..." autocomplete="off" />
+        <button class="model-modal-close" id="modelModalClose">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="model-modal-list" id="modelModalList">
+
+        <div class="model-group-label">Meta — Groq</div>
+        <div class="model-option model-option--active" data-value="llama-3.3-70b-versatile" data-label="Llama 3.3 70B">
+          <i data-lucide="cpu"></i>
+          <span>Llama 3.3 70B <span style="font-size:10px;color:var(--txt-3);margin-left:4px;">Default</span></span>
+          <i data-lucide="check" class="model-check"></i>
+        </div>
+        <div class="model-option" data-value="meta-llama/llama-4-maverick-17b-128e-instruct" data-label="Llama 4 Maverick 17B">
+          <i data-lucide="cpu"></i>
+          <span>Llama 4 Maverick 17B</span>
+          <i data-lucide="check" class="model-check"></i>
+        </div>
+        <div class="model-option" data-value="meta-llama/llama-4-scout-17b-16e-instruct" data-label="Llama 4 Scout 17B">
+          <i data-lucide="cpu"></i>
+          <span>Llama 4 Scout 17B</span>
+          <i data-lucide="check" class="model-check"></i>
+        </div>
+        <div class="model-option" data-value="llama-3.1-8b-instant" data-label="Llama 3.1 8B">
+          <i data-lucide="cpu"></i>
+          <span>Llama 3.1 8B <span style="font-size:10px;color:var(--txt-3);margin-left:4px;">Fast</span></span>
+          <i data-lucide="check" class="model-check"></i>
+        </div>
+
+        <div class="model-group-label">Qwen — Groq</div>
+        <div class="model-option" data-value="qwen/qwen3-32b" data-label="Qwen 3 32B">
+          <i data-lucide="cpu"></i>
+          <span>Qwen 3 32B</span>
+          <i data-lucide="check" class="model-check"></i>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════
+       RIGHT SIDEBAR — no close btn inside
+  ═══════════════════════════ -->
+  <aside class="sidebar-right" id="sidebarRight">
+
+    <!-- header: only title, no duplicate close button -->
+    <div class="sr-header">
+      <span class="sr-title">Saved</span>
+    </div>
+
+    <div class="sr-empty" id="artifactsEmpty">
+      <i data-lucide="bookmark"></i>
+      <p>No saved checkpoints yet.</p>
+      <span>Save important responses to access them quickly from here.</span>
+    </div>
+
+    <div class="sr-list" id="artifactList" style="display:none"></div>
+
+  </aside>
+
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="../scripts/chat.js"></script>
+
+<!-- ═══════════════════════════
+     SETTINGS MODAL
+═══════════════════════════ -->
+<!-- ═══════════════════════════
+     PERSONA MODAL
+═══════════════════════════ -->
+<div class="model-modal-overlay" id="personaModalOverlay">
+  <div class="model-modal" id="personaModal">
+    <div class="model-modal-search">
+      <i data-lucide="user-circle"></i>
+      <input type="text" id="personaSearchInput" placeholder="Search personas..." autocomplete="off" />
+      <button class="model-modal-close" id="personaModalClose">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+    <div class="model-modal-list" id="personaModalList">
+
+      <div class="model-group-label">Personas</div>
+
+      <div class="model-option model-option--active" data-persona="default" data-label="Iyomi">
+        <i data-lucide="heart"></i>
+        <div class="persona-info">
+          <span class="persona-name">Iyomi</span>
+          <span class="persona-desc">Warm, emotionally intelligent companion</span>
+        </div>
+        <i data-lucide="check" class="model-check"></i>
+      </div>
+
+      <div class="model-option" data-persona="study" data-label="Study Buddy">
+        <i data-lucide="book-open"></i>
+        <div class="persona-info">
+          <span class="persona-name">Study Buddy</span>
+          <span class="persona-desc">Focused, academic, structured explanations</span>
+        </div>
+        <i data-lucide="check" class="model-check"></i>
+      </div>
+
+      <div class="model-option" data-persona="therapist" data-label="Therapist">
+        <i data-lucide="brain"></i>
+        <div class="persona-info">
+          <span class="persona-name">Therapist</span>
+          <span class="persona-desc">Empathetic, calm, reflective listener</span>
+        </div>
+        <i data-lucide="check" class="model-check"></i>
+      </div>
+
+      <div class="model-option" data-persona="straight" data-label="Straight Shooter">
+        <i data-lucide="zap"></i>
+        <div class="persona-info">
+          <span class="persona-name">Straight Shooter</span>
+          <span class="persona-desc">No fluff, brutal honesty, direct answers</span>
+        </div>
+        <i data-lucide="check" class="model-check"></i>
+      </div>
+
+      <div class="model-option" data-persona="hype" data-label="Hype Man">
+        <i data-lucide="flame"></i>
+        <div class="persona-info">
+          <span class="persona-name">Hype Man</span>
+          <span class="persona-desc">Energetic, motivational, pumps you up</span>
+        </div>
+        <i data-lucide="check" class="model-check"></i>
+      </div>
+
+      <div class="model-option" data-persona="storyteller" data-label="Storyteller">
+        <i data-lucide="feather"></i>
+        <div class="persona-info">
+          <span class="persona-name">Storyteller</span>
+          <span class="persona-desc">Imaginative, poetic, creative responses</span>
+        </div>
+        <i data-lucide="check" class="model-check"></i>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════
+     CHAT CONTEXT MENU
+═══════════════════════════ -->
+<div class="ctx-menu" id="ctxMenu">
+  <button class="ctx-item" data-action="rename"><i data-lucide="pencil"></i><span>Rename</span></button>
+  <button class="ctx-item" data-action="pin"><i data-lucide="pin"></i><span>Pin chat</span></button>
+  <button class="ctx-item" data-action="archive"><i data-lucide="archive"></i><span>Archive</span></button>
+  <div class="ctx-divider"></div>
+  <button class="ctx-item ctx-item--danger" data-action="delete"><i data-lucide="trash-2"></i><span>Delete</span></button>
+</div>
+
+<!-- ═══════════════════════════
+     SETTINGS MODAL
+═══════════════════════════ -->
+<div class="iy-modal-overlay" id="settingsOverlay">
+  <div class="iy-modal" id="settingsModal" role="dialog" aria-label="Settings">
+
+    <!-- left nav -->
+    <div class="iy-modal-nav">
+      <div class="iy-modal-nav-header">
+        <span class="iy-modal-title">Settings</span>
+      </div>
+      <div class="iy-modal-search-wrap">
+        <i data-lucide="search" class="iy-modal-search-ic"></i>
+        <input type="text" class="iy-modal-search" id="settingsSearch" placeholder="Search settings…" autocomplete="off"/>
+      </div>
+      <nav class="iy-modal-nav-list">
+        <button class="iy-nav-item iy-nav-item--active" data-panel="general">
+          <i data-lucide="settings"></i><span>General</span>
+        </button>
+        <button class="iy-nav-item" data-panel="personalization">
+          <i data-lucide="user-circle"></i><span>Personalization</span>
+        </button>
+        <button class="iy-nav-item" data-panel="data-controls">
+          <i data-lucide="database"></i><span>Data Controls</span>
+        </button>
+        <button class="iy-nav-item" data-panel="security">
+          <i data-lucide="shield"></i><span>Security</span>
+        </button>
+        <button class="iy-nav-item" data-panel="account">
+          <i data-lucide="user"></i><span>Account</span>
+        </button>
+        <button class="iy-nav-item" data-panel="keyboard">
+          <i data-lucide="keyboard"></i><span>Keyboard</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- right content -->
+    <div class="iy-modal-content">
+      <button class="iy-modal-close" id="settingsClose" aria-label="Close settings">
+        <i data-lucide="x"></i>
+      </button>
+
+      <!-- GENERAL -->
+      <div class="iy-panel" id="panel-general">
+        <h2 class="iy-panel-title">General</h2>
+
+        <div class="iy-section">
+          <h3 class="iy-section-title">Appearance</h3>
+          <div class="iy-row">
+            <div class="iy-label-group">
+              <span class="iy-label">Theme</span>
+              <span class="iy-label-sub">Light, dark, or follow system</span>
+            </div>
+            <div class="iy-segmented" id="themeSegmented">
+              <button class="iy-seg-btn" data-val="light"><i data-lucide="sun"></i> Light</button>
+              <button class="iy-seg-btn" data-val="dark"><i data-lucide="moon"></i> Dark</button>
+              <button class="iy-seg-btn" data-val="system"><i data-lucide="monitor"></i> System</button>
+            </div>
+          </div>
+          <div class="iy-row">
+            <div class="iy-label-group">
+              <span class="iy-label">Accent color</span>
+              <span class="iy-label-sub">Bubble and button color</span>
+            </div>
+            <div class="iy-color-swatches" id="accentSwatches">
+              <button class="iy-swatch iy-swatch--active" data-color="#4a9eff" style="background:#4a9eff" title="Blue"></button>
+              <button class="iy-swatch" data-color="#a855f7" style="background:#a855f7" title="Purple"></button>
+              <button class="iy-swatch" data-color="#22c55e" style="background:#22c55e" title="Green"></button>
+              <button class="iy-swatch" data-color="#f97316" style="background:#f97316" title="Orange"></button>
+              <button class="iy-swatch" data-color="#ef4444" style="background:#ef4444" title="Red"></button>
+              <button class="iy-swatch" data-color="#eab308" style="background:#eab308" title="Yellow"></button>
+              <button class="iy-swatch" data-color="#ec4899" style="background:#ec4899" title="Pink"></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="iy-section">
+          <h3 class="iy-section-title">Text</h3>
+          <div class="iy-row">
+            <div class="iy-label-group">
+              <span class="iy-label">Font size</span>
+              <span class="iy-label-sub">Message text size</span>
+            </div>
+            <div class="iy-segmented" id="fontSizeSegmented">
+              <button class="iy-seg-btn" data-val="compact">Compact</button>
+              <button class="iy-seg-btn" data-val="default">Default</button>
+              <button class="iy-seg-btn" data-val="relaxed">Relaxed</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="iy-section">
+          <h3 class="iy-section-title">AI Behaviour</h3>
+          <div class="iy-row">
+            <div class="iy-label-group">
+              <span class="iy-label">Default model</span>
+              <span class="iy-label-sub">Used for new conversations</span>
+            </div>
+            <select class="iy-select" id="defaultModelSelect">
+              <option value="llama-3.3-70b-versatile">Llama 3.3 70B</option>
+              <option value="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout 17B</option>
+              <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant</option>
+              <option value="qwen/qwen3-32b">Qwen 3 32B</option>
+              <option value="openai/gpt-oss-120b">GPT OSS 120B</option>
+            </select>
+          </div>
+          <div class="iy-row">
+            <div class="iy-label-group">
+              <span class="iy-label">Response tone</span>
+              <span class="iy-label-sub">How Iyomi communicates</span>
+            </div>
+            <div class="iy-segmented" id="toneSegmented">
+              <button class="iy-seg-btn" data-val="friendly">Friendly</button>
+              <button class="iy-seg-btn" data-val="neutral">Neutral</button>
+              <button class="iy-seg-btn" data-val="professional">Professional</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PERSONALIZATION -->
+      <div class="iy-panel" id="panel-personalization" style="display:none">
+        <h2 class="iy-panel-title">Personalization</h2>
+
+        <div class="iy-section">
+          <h3 class="iy-section-title">About You</h3>
+          <div class="iy-row">
+            <span class="iy-label">Nickname</span>
+            <input class="iy-input" id="settingsNickname" type="text" placeholder="What should Iyomi call you?"/>
+          </div>
+          <div class="iy-row">
+            <span class="iy-label">Occupation</span>
+            <input class="iy-input" id="settingsOccupation" type="text" placeholder="e.g. Designer, Student, Engineer"/>
+          </div>
+          <div class="iy-row iy-row--tall">
+            <span class="iy-label">More about you</span>
+            <textarea class="iy-textarea" id="settingsAboutYou" rows="3" placeholder="Anything Iyomi should know — interests, goals, how you like responses…"></textarea>
+          </div>
+        </div>
+
+        <div class="iy-section">
+          <h3 class="iy-section-title">Memory</h3>
+          <div class="iy-row">
+            <div class="iy-label-group">
+              <span class="iy-label">Reference saved memories</span>
+              <span class="iy-label-sub">Use past context in new chats</span>
+            </div>
+            <button class="iy-toggle" id="memoryToggle" data-on="true" role="switch" aria-checked="true"></button>
+          </div>
+          <div class="iy-row">
+            <div class="iy-label-group">
+              <span class="iy-label">Reference chat history</span>
+              <span class="iy-label-sub">Pull from previous conversations</span>
+            </div>
+            <button class="iy-toggle" id="historyRefToggle" data-on="true" role="switch" aria-checked="true"></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- DATA CONTROLS -->
+      <div class="iy-panel" id="panel-data-controls" style="display:none">
+        <h2 class="iy-panel-title">Data Controls</h2>
+
+        <div class="iy-section">
+          <h3 class="iy-section-title">Chat Management</h3>
+          <div class="iy-row">
+            <div class="iy-label-group">
+              <span class="iy-label">Archived chats</span>
+              <span class="iy-label-sub">View and restore archived conversations</span>
+            </div>
+            <button class="iy-btn iy-btn--secondary" id="viewArchivedBtn">View archived</button>
+          </div>
+          <div class="iy-row">
+            <div class="iy-label-group">
+              <span class="iy-label">Archive all chats</span>
+              <span class="iy-label-sub">Move all current chats to archive</span>
+            </div>
+            <button class="iy-btn iy-btn--secondary" id="archiveAllBtn">Archive all</button>
+          </div>
+          <div class="iy-row">
+            <div class="iy-label-group">
+              <span class="iy-label">Save conversation history</span>
+              <span class="iy-label-sub">Store chats for future sessions</span>
+            </div>
+            <button class="iy-toggle" id="saveHistoryToggle" data-on="true" role="switch" aria-checked="true"></button>
+          </div>
+        </div>
+
+        <div class="iy-section">
+          <h3 class="iy-section-title">Export & Location</h3>
+          <div class="iy-row">
+            <div class="iy-label-group">
+              <span class="iy-label">Export all data</span>
+              <span class="iy-label-sub">Download conversations as JSON</span>
+            </div>
+            <button class="iy-btn iy-btn--secondary" id="exportDataBtn">Export</button>
+          </div>
+          <div class="iy-row">
+            <div class="iy-label-group">
+              <span class="iy-label">Location</span>
+              <span class="iy-label-sub">Better results based on your region</span>
+            </div>
+            <select class="iy-select" id="locationSelect">
+              <option value="auto">Auto-detect</option>
+              <option value="us">United States</option>
+              <option value="in">India</option>
+              <option value="uk">United Kingdom</option>
+              <option value="eu">Europe</option>
+              <option value="jp">Japan</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="iy-section iy-section--danger">
+          <h3 class="iy-section-title iy-section-title--danger">Danger Zone</h3>
+          <div class="iy-row">
+            <div class="iy-label-group">
+              <span class="iy-label">Delete all conversations</span>
+              <span class="iy-label-sub">Permanently removes all chat history</span>
+            </div>
+            <button class="iy-btn iy-btn--danger" id="deleteAllChatsBtn">Delete all</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECURITY -->
+      <div class="iy-panel" id="panel-security" style="display:none">
+        <h2 class="iy-panel-title">Security</h2>
+
+        <div class="iy-section">
+          <h3 class="iy-section-title">Authentication</h3>
+          <div class="iy-row">
+            <div class="iy-label-group">
+              <span class="iy-label">Password</span>
+              <span class="iy-label-sub">Change your login password</span>
+            </div>
+            <button class="iy-btn iy-btn--secondary" id="changePasswordBtn">Change password</button>
+          </div>
+          <div class="iy-row">
+            <div class="iy-label-group">
+              <span class="iy-label">Connected accounts</span>
+              <span class="iy-label-sub">Google, GitHub and more</span>
+            </div>
+            <button class="iy-btn iy-btn--secondary" id="manageAccountBtn">Manage</button>
+          </div>
+        </div>
+
+        <div class="iy-section">
+          <h3 class="iy-section-title">Sessions</h3>
+          <div class="iy-row">
+            <div class="iy-label-group">
+              <span class="iy-label">Active sessions</span>
+              <span class="iy-label-sub">Devices where you're signed in</span>
+            </div>
+            <button class="iy-btn iy-btn--secondary" id="activeSessionsBtn">View sessions</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACCOUNT -->
+      <div class="iy-panel" id="panel-account" style="display:none">
+        <h2 class="iy-panel-title">Account</h2>
+
+        <div class="iy-section">
+          <h3 class="iy-section-title">Profile</h3>
+          <div class="iy-row iy-row--avatar">
+            <div class="iy-label-group">
+              <span class="iy-label">Avatar</span>
+              <span class="iy-label-sub">From your connected account</span>
+            </div>
+            <div class="iy-avatar-lg" id="settingsAvatar">?</div>
+          </div>
+          <div class="iy-row">
+            <span class="iy-label">Full name</span>
+            <input class="iy-input" id="settingsName" type="text" placeholder="Your name" readonly/>
+          </div>
+          <div class="iy-row">
+            <span class="iy-label">Email</span>
+            <input class="iy-input iy-input--readonly" id="settingsEmail" type="email" placeholder="—" readonly/>
+          </div>
+        </div>
+
+        <div class="iy-section iy-section--danger">
+          <h3 class="iy-section-title iy-section-title--danger">Danger Zone</h3>
+          <div class="iy-row">
+            <div class="iy-label-group">
+              <span class="iy-label">Delete account</span>
+              <span class="iy-label-sub">Permanently deletes your account and all data</span>
+            </div>
+            <button class="iy-btn iy-btn--danger" id="deleteAccountBtn">Delete account</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- KEYBOARD -->
+      <div class="iy-panel" id="panel-keyboard" style="display:none">
+        <h2 class="iy-panel-title">Keyboard Shortcuts</h2>
+
+        <div class="iy-section">
+          <h3 class="iy-section-title">Navigation</h3>
+          <div class="iy-shortcut-row"><span>New chat</span><kbd>Ctrl</kbd> + <kbd>N</kbd></div>
+          <div class="iy-shortcut-row"><span>Toggle sidebar</span><kbd>Ctrl</kbd> + <kbd>B</kbd></div>
+          <div class="iy-shortcut-row"><span>Search chats</span><kbd>Ctrl</kbd> + <kbd>K</kbd></div>
+          <div class="iy-shortcut-row"><span>Settings</span><kbd>Ctrl</kbd> + <kbd>,</kbd></div>
+        </div>
+
+        <div class="iy-section">
+          <h3 class="iy-section-title">Chat</h3>
+          <div class="iy-shortcut-row"><span>Send message</span><kbd>Enter</kbd></div>
+          <div class="iy-shortcut-row"><span>New line</span><kbd>Shift</kbd> + <kbd>Enter</kbd></div>
+          <div class="iy-shortcut-row"><span>Focus input</span><kbd>/</kbd></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════
+     HELP MODAL
+═══════════════════════════ -->
+<div class="iy-modal-overlay" id="helpOverlay">
+  <div class="iy-modal iy-modal--sm" id="helpModal" role="dialog" aria-label="Help">
+    <div class="iy-modal-content iy-modal-content--full">
+      <div class="iy-modal-nav-header">
+        <span class="iy-modal-title">Help</span>
+        <button class="iy-modal-close iy-modal-close--inline" id="helpClose" aria-label="Close help">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div class="iy-panel" style="display:block">
+        <div class="iy-section">
+          <h3 class="iy-section-title">Keyboard shortcuts</h3>
+          <div class="iy-shortcuts">
+            <div class="iy-shortcut-row"><span class="iy-shortcut-label">Send message</span><kbd>Enter</kbd></div>
+            <div class="iy-shortcut-row"><span class="iy-shortcut-label">New line</span><kbd>Shift + Enter</kbd></div>
+            <div class="iy-shortcut-row"><span class="iy-shortcut-label">New chat</span><kbd>Ctrl + K</kbd></div>
+            <div class="iy-shortcut-row"><span class="iy-shortcut-label">Toggle sidebar</span><kbd>Ctrl + B</kbd></div>
+            <div class="iy-shortcut-row"><span class="iy-shortcut-label">Open settings</span><kbd>Ctrl + ,</kbd></div>
+            <div class="iy-shortcut-row"><span class="iy-shortcut-label">Close modal</span><kbd>Esc</kbd></div>
+          </div>
+        </div>
+
+        <div class="iy-section">
+          <h3 class="iy-section-title">About Iyomi</h3>
+          <p class="iy-help-text">Iyomi is an emotionally intelligent AI companion built for real conversations. It remembers context, adapts to your tone, and gets smarter with every interaction.</p>
+        </div>
+
+        <div class="iy-section">
+          <h3 class="iy-section-title">Support</h3>
+          <div class="iy-row">
+            <span class="iy-label">Report a bug</span>
+            <a href="mailto:support@iyomi.ai" class="iy-btn iy-btn--secondary">Contact</a>
+          </div>
+        </div>
+
+        <div class="iy-section">
+          <h3 class="iy-section-title">Version</h3>
+          <p class="iy-help-text" style="color:var(--txt-3);font-size:12px;">Iyomi v1.0.0 — Built with Groq + Clerk &nbsp;·&nbsp; © 2026 Iyomi</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM DIALOG -->
+<div class="iy-modal-overlay" id="confirmOverlay">
+  <div class="iy-confirm" id="confirmDialog">
+    <h3 class="iy-confirm-title" id="confirmTitle">Are you sure?</h3>
+    <p class="iy-confirm-sub" id="confirmSub">This action cannot be undone.</p>
+    <div class="iy-confirm-input-wrap" id="confirmInputWrap">
+      <input class="iy-input" id="confirmInput" placeholder='Type "DELETE" to confirm'/>
+    </div>
+    <div class="iy-confirm-actions">
+      <button class="iy-btn iy-btn--secondary" id="confirmCancel">Cancel</button>
+      <button class="iy-btn iy-btn--danger" id="confirmOk" disabled>Delete</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
