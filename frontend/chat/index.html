@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Iyomi Chat</title>
+  <title>Chat</title>
  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -118,6 +118,15 @@ data-clerk-publishable-key="pk_test_Y29taWMtc3RhbGxpb24tNDQuY2xlcmsuYWNjb3VudHMu
           <div class="sl-user-avatar" id="slUserAvatar">?</div>
           <div class="sl-user-info">
             <div class="sl-user-name" id="slUserName">Loading…</div>
+            <div class="sl-user-meta">
+              <span class="sl-user-title" id="slUserTitle">Blossom Wanderer</span>
+              <span class="sl-user-sep">·</span>
+              <span class="sl-user-level" id="slUserLevel">Lv 0</span>
+            </div>
+          </div>
+          <div class="sl-user-stats">
+            <span class="sl-stat" title="Sakura Petals"><i data-lucide="flower-2"></i><span id="slPetalCount">0</span></span>
+            <span class="sl-stat" title="Daily Streak"><i data-lucide="flame"></i><span id="slStreakCount">0</span></span>
           </div>
         </button>
 
@@ -171,10 +180,20 @@ data-clerk-publishable-key="pk_test_Y29taWMtc3RhbGxpb24tNDQuY2xlcmsuYWNjb3VudHMu
     <!-- welcome state -->
     <div class="welcome-state" id="welcomeState">
       <div class="welcome-inner">
-        <h1 class="welcome-heading">
-          How may I help you, <span class="welcome-name">Raj</span>?
+        <h1 class="welcome-heading" id="welcomeHeading">
+          What's on your mind?
         </h1>
-        <p class="welcome-sub">Ask me anything. I remember. I understand. I'm here.</p>
+        <p class="welcome-sub" id="welcomeSub"></p>
+
+        <!-- location prompt — shown once on first visit -->
+        <div class="location-prompt" id="locationPrompt" style="display:none">
+          <p class="location-prompt-text">Enable location for personalized greetings based on your time and city.</p>
+          <div class="location-prompt-actions">
+            <button class="location-prompt-btn location-prompt-btn--allow" id="locationAllow">Enable location</button>
+            <button class="location-prompt-btn location-prompt-btn--skip" id="locationSkip">Not now</button>
+          </div>
+        </div>
+
         <div class="chip-grid">
           <button class="chip" data-text="How's my day looking?">
             <i data-lucide="sun"></i>

@@ -15,7 +15,6 @@ module.exports = function cors(req, res, next) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PATCH, DELETE');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Expose-Headers', 'X-Conversation-Id, X-Conversation-Title');
-
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
     return res.end();

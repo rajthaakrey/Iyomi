@@ -1,10 +1,995 @@
-// ── module-scope globals (shared between DOMContentLoaded and Clerk load) ──
+// ── Global state — accessible across DOMContentLoaded and Clerk auth ──
 const API = 'http://localhost:3000';
 let clerkUserId   = null;
 let conversations = [];
 let activeConvId  = null;
 
 document.addEventListener('DOMContentLoaded', () => {
+
+  /* ── Batches multiple lucide icon renders into a single frame ── */
+  let _iconTimer = null;
+  function refreshIcons() {
+    if (_iconTimer) return;
+    _iconTimer = requestAnimationFrame(() => {
+      lucide.createIcons();
+      _iconTimer = null;
+    });
+  }
+
+  /* ── Toast notifications — replaces alert() for non-blocking feedback ── */
+  function showToast(message, type = 'info', duration = 3000) {
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'toastContainer';
+      container.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none;';
+      document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    const colors = { info: '#4a9eff', success: '#22c55e', error: '#ef4444', warn: '#f97316' };
+    toast.style.cssText = `
+      padding:10px 18px;border-radius:10px;font-size:13px;font-family:var(--font);
+      color:#fff;background:${colors[type] || colors.info};
+      box-shadow:0 4px 16px rgba(0,0,0,0.2);pointer-events:auto;
+      opacity:0;transform:translateY(8px);transition:opacity 0.2s ease,transform 0.2s ease;
+    `;
+    toast.textContent = message;
+    container.appendChild(toast);
+    requestAnimationFrame(() => { toast.style.opacity = '1'; toast.style.transform = 'translateY(0)'; });
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(8px)';
+      setTimeout(() => toast.remove(), 200);
+    }, duration);
+  }
+
+  /* ── Escapes HTML entities to prevent XSS in innerHTML contexts ── */
+  function escapeHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  /* ══════════════════════════════
+     WELCOME MESSAGE ENGINE
+     Pre-written pool rotated by category, time, and context
+  ══════════════════════════════ */
+  const WELCOME_MESSAGES = {
+    universal: [
+      "What's on your mind?", "Ready when you are.", "Let's make progress.",
+      "Start anywhere.", "Something worth exploring?", "Let's build something useful.",
+      "New chat. New possibilities.", "What's today's mission?", "Bring your best idea.",
+      "Let's get started.", "Where should we begin?", "What's worth discussing?",
+      "Curious about something?", "Let's figure it out.", "Your move.",
+      "What's next?", "Let's make today count.", "What's the challenge?",
+      "Ready for a breakthrough?", "Let's create something great."
+    ],
+    curiosity: [
+      "What are you wondering about?", "Let's follow your curiosity.",
+      "Ask the question.", "What's worth understanding?",
+      "Let's explore the unknown.", "What's hiding beneath the surface?",
+      "Ready to learn something surprising?", "What deserves a closer look?",
+      "Let's uncover something interesting.", "Where does your curiosity lead?",
+      "Every answer starts somewhere.", "What's the mystery today?",
+      "Discover something unexpected.", "What's the rabbit hole?",
+      "Explore a new perspective."
+    ],
+    motivation: [
+      "Small steps create momentum.", "Progress starts now.",
+      "Your next win awaits.", "One idea can change everything.",
+      "Keep moving forward.", "Today's a good day to begin.",
+      "Build the future you want.", "Start before you're ready.",
+      "Great things take one step.", "Momentum loves action.",
+      "Keep building.", "Make progress visible.",
+      "Turn ideas into reality.", "Better starts here.",
+      "Let's move things forward."
+    ],
+    creativity: [
+      "Create something remarkable.", "What doesn't exist yet?",
+      "Let's invent something new.", "Imagination is welcome here.",
+      "Build beyond expectations.", "What if?",
+      "Dream bigger.", "Start with possibilities.",
+      "Make something unforgettable.", "Let's rethink the obvious.",
+      "Explore bold ideas.", "Creativity starts now.",
+      "Design what's next.", "Create without limits.",
+      "Bring ideas to life."
+    ],
+    productivity: [
+      "What's the priority today?", "Ready to focus?",
+      "Let's simplify the complex.", "One task at a time.",
+      "Clear goals, steady progress.", "Focus mode activated.",
+      "Let's organize the chaos.", "Ready to tackle the list?",
+      "Make every minute count.", "What's the next move?",
+      "Turn plans into action.", "Let's get things done.",
+      "Progress beats perfection.", "Finish strong.",
+      "Let's find clarity."
+    ],
+    learning: [
+      "What shall we learn?", "Curiosity looks good on you.",
+      "Learn something useful today.", "Ready for a knowledge upgrade?",
+      "Expand your perspective.", "Discover something new.",
+      "Let's dive deeper.", "Feed your curiosity.",
+      "Explore new ideas.", "Understanding starts here.",
+      "Ask anything.", "What's worth learning today?",
+      "Let's decode complexity.", "New insights await.",
+      "Knowledge begins with questions."
+    ],
+    morning: [
+      "Good morning, builder.", "Fresh day, fresh possibilities.",
+      "Start strong today.", "Rise and create.",
+      "What's today's opportunity?", "Morning momentum starts here.",
+      "Ready for the day ahead?", "New sunrise, new ideas.",
+      "Let's begin.", "Today's chapter starts now."
+    ],
+    evening: [
+      "Wrapping up or starting fresh?", "End the day stronger.",
+      "Evening ideas welcome.", "Let's make tonight productive.",
+      "Reflect and recharge.", "What's tonight's focus?",
+      "Great ideas love evenings.", "Build quietly.",
+      "Nighttime creativity unlocked.", "One more great idea?"
+    ],
+    weekend: [
+      "Weekend mode activated.", "What's today's side quest?",
+      "Make this weekend count.", "Explore something new today.",
+      "Curiosity loves weekends.", "Build something fun.",
+      "What's on the agenda?", "Create without deadlines.",
+      "Weekend inspiration unlocked.", "Time for fresh ideas."
+    ],
+    sunny: [
+      "Bright day. Bright ideas.", "Sunshine and possibilities.",
+      "Perfect weather for progress.", "Let today's energy work.",
+      "Create something brilliant."
+    ],
+    rainy: [
+      "Rain outside. Ideas inside.", "Perfect day for deep thinking.",
+      "Let inspiration pour.", "Cozy weather, sharp thinking.",
+      "Build while it rains."
+    ],
+    cold: [
+      "Warm ideas welcome.", "Cold outside. Big thinking inside.",
+      "Stay warm. Think bigger.", "Great ideas love winter.",
+      "Build something worth sharing."
+    ],
+    festival: [
+      "Celebration meets inspiration.", "Festival vibes, fresh ideas.",
+      "A great day to create.", "What's worth celebrating?",
+      "Bright moments ahead.", "Make today memorable.",
+      "New traditions start somewhere.", "Share ideas. Share joy.",
+      "Create something meaningful.", "Celebrate possibility."
+    ],
+    premium: [
+      "Extraordinary starts here.", "Build your legacy.",
+      "Think beyond the obvious.", "Shape what's next.",
+      "Create something timeless.", "Your best ideas belong here.",
+      "Design tomorrow.", "Build the remarkable.",
+      "Leave ordinary behind.", "The future is listening."
+    ],
+    rare: [
+      "Today feels different.", "This might be the idea.",
+      "Some conversations change everything.", "You're exactly on time.",
+      "Unexpected possibilities ahead.", "What if this works?",
+      "Something remarkable could begin.", "The next chapter awaits.",
+      "An idea is looking for you.", "Let's see where this goes."
+    ]
+  };
+
+  // weighted category picker — percentages from the rotation strategy
+  const WELCOME_WEIGHTS = [
+    { cat: 'universal',    weight: 40 },
+    { cat: 'curiosity',    weight: 15 },
+    { cat: 'motivation',   weight: 10 },
+    { cat: 'creativity',   weight: 10 },
+    { cat: 'productivity', weight: 10 },
+    { cat: 'learning',     weight: 5 },
+    { cat: 'premium',      weight: 4 },
+    { cat: 'rare',         weight: 1 }
+  ];
+
+  // time-of-day and context category selection
+  function getTimeCategory() {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12)  return 'morning';
+    if (hour >= 18 || hour < 5)  return 'evening';
+    return null;
+  }
+
+  function isWeekend() {
+    const day = new Date().getDay();
+    return day === 0 || day === 6;
+  }
+
+  // picks a random message using weighted categories + time context
+  function pickWelcomeMessage() {
+    // 5% chance of time-specific message
+    const timeCat = getTimeCategory();
+    if (timeCat && Math.random() < 0.05 && WELCOME_MESSAGES[timeCat]) {
+      const pool = WELCOME_MESSAGES[timeCat];
+      return pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    // 5% chance of weekend message on weekends
+    if (isWeekend() && Math.random() < 0.05) {
+      const pool = WELCOME_MESSAGES.weekend;
+      return pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    // weighted random category
+    const total = WELCOME_WEIGHTS.reduce((s, w) => s + w.weight, 0);
+    let roll = Math.random() * total;
+    for (const { cat, weight } of WELCOME_WEIGHTS) {
+      roll -= weight;
+      if (roll <= 0) {
+        const pool = WELCOME_MESSAGES[cat];
+        return pool[Math.floor(Math.random() * pool.length)];
+      }
+    }
+
+    return "What's on your mind?";
+  }
+
+  // updates the welcome heading with a fresh message
+  function refreshWelcomeMessage() {
+    const heading = document.getElementById('welcomeHeading');
+    if (heading) heading.textContent = pickWelcomeMessage();
+  }
+
+  // show on page load
+  refreshWelcomeMessage();
+  window.refreshWelcomeMessage = refreshWelcomeMessage;
+
+  /* ══════════════════════════════
+     LOCATION SYSTEM
+     Asks for browser geolocation on first visit for time/city personalization
+  ══════════════════════════════ */
+  const locationPrompt = document.getElementById('locationPrompt');
+  const locationAllow  = document.getElementById('locationAllow');
+  const locationSkip   = document.getElementById('locationSkip');
+  const locationStatus = localStorage.getItem('iyomi-location-status');
+
+  // show prompt only on first visit (no stored decision)
+  if (!locationStatus && locationPrompt) {
+    locationPrompt.style.display = 'flex';
+  }
+
+  if (locationAllow) {
+    locationAllow.addEventListener('click', () => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            localStorage.setItem('iyomi-location-status', 'granted');
+            localStorage.setItem('iyomi-lat', pos.coords.latitude);
+            localStorage.setItem('iyomi-lng', pos.coords.longitude);
+            locationPrompt.style.display = 'none';
+            showToast('Location enabled', 'success');
+          },
+          () => {
+            localStorage.setItem('iyomi-location-status', 'denied');
+            locationPrompt.style.display = 'none';
+            showToast('Location denied — using default time', 'info');
+          }
+        );
+      } else {
+        localStorage.setItem('iyomi-location-status', 'unsupported');
+        locationPrompt.style.display = 'none';
+      }
+    });
+  }
+
+  if (locationSkip) {
+    locationSkip.addEventListener('click', () => {
+      localStorage.setItem('iyomi-location-status', 'skipped');
+      locationPrompt.style.display = 'none';
+    });
+  }
+
+  /* ══════════════════════════════
+     XP & LEVELING SYSTEM
+     Formula: XP per level = 100 + (level × 50)
+     XP awarded only after 5+ messages exchanged in a conversation
+  ══════════════════════════════ */
+  const TITLES = [
+    'Blossom Wanderer',   // 0-9
+    'Petal Seeker',       // 10-19
+    'Sakura Dreamer',     // 20-29
+    'Cherry Guardian',    // 30-39
+    'Bloom Companion',    // 40-49
+    'Lantern Bearer',     // 50-59
+    'Shrine Keeper',      // 60-69
+    'Grove Watcher',      // 70-79
+    'Petal Warden',       // 80-89
+    'Memory Weaver',      // 90-99
+    'Soul Guardian',      // 100-109
+    'Eternal Bloom',      // 110-119
+    'Sakura Sentinel',    // 120-129
+    'Spirit Keeper',      // 130-139
+    'Moon Guardian',      // 140-149
+    'Blossom Sovereign',  // 150-159
+    'Veil Walker',        // 160-169
+    'Shrine Eternal',     // 170-179
+    'Petal Sovereign',    // 180-189
+    'Divine Bloom',       // 190-199
+    'Sakura Legend',      // 200-209
+    'Eternal Keeper',     // 210-219
+    'Spirit Sovereign',   // 220-229
+    'Moon Eternal',       // 230-239
+    'True Guardian'       // 240-249
+  ];
+
+  // returns XP needed to go from `level` to `level+1`
+  function xpForLevel(level) {
+    return 100 + (level * 50);
+  }
+
+  // returns { level, currentXp, xpNeeded, totalXp } from total XP
+  function calcLevel(totalXp) {
+    let level = 0;
+    let remaining = totalXp;
+    while (remaining >= xpForLevel(level)) {
+      remaining -= xpForLevel(level);
+      level++;
+    }
+    return {
+      level: level,
+      currentXp: remaining,
+      xpNeeded: xpForLevel(level),
+      totalXp: totalXp
+    };
+  }
+
+  // returns the title for a given level
+  function getTitleForLevel(level) {
+    const idx = Math.min(Math.floor(level / 10), TITLES.length - 1);
+    return TITLES[idx];
+  }
+
+  // calculates XP earned from a conversation based on message count
+  function calcConversationXp(messageCount) {
+    if (messageCount < 5) return 0; // glitch-proof: no XP for short chats
+    let xp = 10 + Math.floor(Math.random() * 6); // base 10-15 XP
+    if (messageCount >= 10) xp += 5;  // medium chat bonus
+    if (messageCount >= 20) xp += 10; // long chat bonus
+    if (messageCount >= 40) xp += 15; // deep chat bonus
+    return xp;
+  }
+
+  // tracks messages in the current conversation for XP threshold
+  let convMessageCount = 0;
+  let xpAwardedThisConv = false;
+
+  // awards XP and handles level-up detection
+  async function awardXp(xpAmount) {
+    if (xpAmount <= 0) return;
+    try {
+      const res = await fetch(`${API}/api/user-stats/xp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: clerkUserId, xp: xpAmount })
+      });
+      if (res.ok) {
+        const stats = await res.json();
+        const oldLevel = calcLevel(stats.totalXp - xpAmount).level;
+        const newLevel = calcLevel(stats.totalXp).level;
+
+        // update profile display
+        if (window.updateProfileStats) {
+          window.updateProfileStats({
+            level: newLevel,
+            title: getTitleForLevel(newLevel),
+            petals: stats.petals || 0,
+            streak: stats.streak || 0
+          });
+        }
+
+        // level up notification
+        if (newLevel > oldLevel) {
+          const newTitle = getTitleForLevel(newLevel);
+          showToast(`Level ${newLevel}! ${newTitle}`, 'success', 4000);
+        } else {
+          showToast(`+${xpAmount} XP`, 'info', 2000);
+        }
+      }
+    } catch (err) {
+      console.warn('[xp] Could not award XP:', err.message);
+      // still show local feedback even if backend fails
+      showToast(`+${xpAmount} XP`, 'info', 2000);
+    }
+  }
+
+  /* ══════════════════════════════
+     EASTER EGG SYSTEM
+     10% chance on every new chat. Artifacts with rarity tiers.
+     Top-right notification popup with collect button.
+  ══════════════════════════════ */
+  const EASTER_EGG_CHANCE = 0.10;
+
+  const RARITY_TIERS = [
+    { name: 'Common',    weight: 60, petals: 1,  color: '#FFB7C5' },
+    { name: 'Rare',      weight: 25, petals: 4,  color: '#4a9eff' },
+    { name: 'Epic',      weight: 10, petals: 10, color: '#a855f7' },
+    { name: 'Legendary', weight: 4,  petals: 25, color: '#f59e0b' },
+    { name: 'Mythic',    weight: 1,  petals: 50, color: '#ef4444' }
+  ];
+
+  const ARTIFACTS = {
+    common: [
+      'First Rain', 'Petal Fragment', 'Quiet Thought', 'Passing Cloud',
+      'Small Spark', 'River Stone', 'Morning Dew', 'Soft Echo',
+      'Warm Breeze', 'Paper Lantern', 'Fallen Leaf', 'Still Water'
+    ],
+    rare: [
+      'The First Spark', 'The Curious Mind', 'The Explorer',
+      'The Deep Thinker', 'Thunder Archive', 'Cloud Walker',
+      'Storm Chaser', 'Desert Compass', 'Startup Scroll'
+    ],
+    epic: [
+      'The Architect', 'The Time Traveler', 'Lost Idea #001',
+      'Color Weaver', 'Rainbow Collector', 'Gateway Keeper',
+      'Lake Whisperer', 'Capital Chronicle'
+    ],
+    legendary: [
+      'Golden Light', 'Midnight Lantern', 'Festival Spark',
+      'Monsoon Scholar', 'Diwali Master'
+    ],
+    mythic: [
+      'The Beginning', 'Midnight Signal', 'The Eclipse',
+      'Festival Oracle', 'Leap Day Scroll'
+    ]
+  };
+
+  const ULTRA_RARE_MESSAGES = [
+    'You weren\'t supposed to see this.',
+    'The archive noticed you.',
+    'Artifact detected.',
+    'Curiosity level exceptional.',
+    'Rare message discovered.',
+    'This greeting appears once daily.',
+    'The observatory is watching.',
+    'Hidden path unlocked.',
+    'Welcome back, explorer.',
+    'The vault remembers.'
+  ];
+
+  function pickRarity() {
+    const total = RARITY_TIERS.reduce((s, r) => s + r.weight, 0);
+    let roll = Math.random() * total;
+    for (const tier of RARITY_TIERS) {
+      roll -= tier.weight;
+      if (roll <= 0) return tier;
+    }
+    return RARITY_TIERS[0];
+  }
+
+  function pickArtifact(rarityName) {
+    const key = rarityName.toLowerCase();
+    const pool = ARTIFACTS[key] || ARTIFACTS.common;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  function showEasterEggPopup(artifactName, rarity) {
+    const existing = document.getElementById('easterEggPopup');
+    if (existing) existing.remove();
+
+    const popup = document.createElement('div');
+    popup.id = 'easterEggPopup';
+    popup.className = 'easter-egg-popup';
+    popup.innerHTML = `
+      <div class="ee-glow" style="background:${rarity.color}"></div>
+      <div class="ee-content">
+        <div class="ee-sparkle">✨</div>
+        <div class="ee-label">You discovered:</div>
+        <div class="ee-artifact-name" style="color:${rarity.color}">"${escapeHtml(artifactName)}"</div>
+        <div class="ee-rarity" style="color:${rarity.color}">${rarity.name}</div>
+        <button class="ee-collect-btn" style="background:${rarity.color}">
+          Collect · +${rarity.petals} petal${rarity.petals > 1 ? 's' : ''}
+        </button>
+        <button class="ee-dismiss-btn">Not now</button>
+      </div>
+    `;
+
+    document.body.appendChild(popup);
+    requestAnimationFrame(() => popup.classList.add('ee-visible'));
+
+    popup.querySelector('.ee-collect-btn').addEventListener('click', () => {
+      collectArtifact(artifactName, rarity);
+      dismissEasterEgg(popup);
+    });
+
+    popup.querySelector('.ee-dismiss-btn').addEventListener('click', () => {
+      dismissEasterEgg(popup);
+    });
+
+    setTimeout(() => {
+      if (document.body.contains(popup)) dismissEasterEgg(popup);
+    }, 15000);
+  }
+
+  function dismissEasterEgg(popup) {
+    popup.classList.remove('ee-visible');
+    setTimeout(() => popup.remove(), 300);
+  }
+
+  async function collectArtifact(artifactName, rarity) {
+    showToast(`Collected "${artifactName}" · +${rarity.petals} petal${rarity.petals > 1 ? 's' : ''}`, 'success', 3000);
+
+    const bonusXp = 30 + (RARITY_TIERS.indexOf(rarity) * 12);
+    if (clerkUserId) awardXp(bonusXp);
+
+    if (clerkUserId) {
+      fetch(`${API}/api/user-stats/collect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: clerkUserId,
+          artifact: artifactName,
+          rarity: rarity.name,
+          petals: rarity.petals
+        })
+      }).catch(err => {
+        console.warn('[easter-egg] Could not save collection:', err.message);
+      });
+    }
+  }
+
+  function checkEasterEgg() {
+    // 0.01% ultra-rare welcome message override
+    if (Math.random() < 0.0001) {
+      const heading = document.getElementById('welcomeHeading');
+      if (heading) {
+        heading.textContent = ULTRA_RARE_MESSAGES[Math.floor(Math.random() * ULTRA_RARE_MESSAGES.length)];
+      }
+      return;
+    }
+
+    // 10% Easter egg chance
+    if (Math.random() < EASTER_EGG_CHANCE) {
+      const rarity = pickRarity();
+      const artifact = pickArtifact(rarity.name);
+      setTimeout(() => showEasterEggPopup(artifact, rarity), 800);
+    }
+  }
+
+  /* ══════════════════════════════
+     SECRET WORDS SYSTEM
+     Certain welcome messages contain hidden keywords.
+     Typing the keyword in chat input unlocks a special artifact.
+  ══════════════════════════════ */
+  const SECRET_WORDS = [
+    { keyword: 'lighthouse',  message: 'The lighthouse still shines.',        artifact: 'Lighthouse Artifact',   rarity: RARITY_TIERS[2] },
+    { keyword: 'compass',     message: 'The compass points somewhere new.',   artifact: 'Hidden Compass',        rarity: RARITY_TIERS[2] },
+    { keyword: 'echo',        message: 'An echo from the forgotten archive.', artifact: 'Echo Fragment',         rarity: RARITY_TIERS[1] },
+    { keyword: 'lantern',     message: 'A lantern flickers in the distance.', artifact: 'Lantern of the Veil',   rarity: RARITY_TIERS[3] },
+    { keyword: 'moonstone',   message: 'The moonstone hums quietly.',         artifact: 'Moonstone Relic',       rarity: RARITY_TIERS[3] },
+    { keyword: 'cipher',      message: 'A cipher waits to be decoded.',       artifact: 'The Cipher',            rarity: RARITY_TIERS[2] },
+    { keyword: 'aurora',      message: 'The aurora is visible tonight.',      artifact: 'Aurora Shard',          rarity: RARITY_TIERS[4] },
+    { keyword: 'vault',       message: 'The vault door is slightly ajar.',    artifact: 'Vault Key',             rarity: RARITY_TIERS[3] },
+    { keyword: 'prism',       message: 'Light bends through a hidden prism.', artifact: 'Prism Fragment',        rarity: RARITY_TIERS[1] },
+    { keyword: 'tide',        message: 'The tide carries a secret.',          artifact: 'Tidal Scroll',          rarity: RARITY_TIERS[2] },
+    { keyword: 'ember',       message: 'An ember glows in the dark.',         artifact: 'Ember Core',            rarity: RARITY_TIERS[1] },
+    { keyword: 'stardust',    message: 'Stardust settles on the keyboard.',   artifact: 'Stardust Relic',        rarity: RARITY_TIERS[4] }
+  ];
+
+  // hidden welcome messages — shown rarely (0.5% chance), no keyword needed
+  const HIDDEN_MESSAGES = [
+    'You found something unusual.',
+    'This message appears rarely.',
+    'Curiosity rewards the observant.',
+    'Artifact nearby.',
+    'Something is different today.',
+    'The pattern shifted.',
+    'Not everyone sees this.',
+    'The observant are rewarded.',
+    'A door opened somewhere.',
+    'The archive remembers you.'
+  ];
+
+  let activeSecretWord = null; // currently active secret word, if any
+
+  // 2% chance per new chat to show a secret word message
+  function checkSecretWord() {
+    if (Math.random() < 0.02) {
+      const sw = SECRET_WORDS[Math.floor(Math.random() * SECRET_WORDS.length)];
+      const heading = document.getElementById('welcomeHeading');
+      if (heading) heading.textContent = sw.message;
+      activeSecretWord = sw;
+      return true;
+    }
+
+    // 0.5% chance for hidden messages (no keyword, just rare vibes)
+    if (Math.random() < 0.005) {
+      const heading = document.getElementById('welcomeHeading');
+      if (heading) heading.textContent = HIDDEN_MESSAGES[Math.floor(Math.random() * HIDDEN_MESSAGES.length)];
+      return true;
+    }
+
+    activeSecretWord = null;
+    return false;
+  }
+
+  // listen for secret word typed in chat input
+  const secretWordInput = document.getElementById('chatInput');
+  if (secretWordInput) {
+    secretWordInput.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' || e.shiftKey) return;
+      if (!activeSecretWord) return;
+
+      const typed = secretWordInput.value.trim().toLowerCase();
+      if (typed === activeSecretWord.keyword) {
+        e.preventDefault();
+        secretWordInput.value = '';
+        secretWordInput.dispatchEvent(new Event('input'));
+
+        // unlock the artifact
+        showToast(`🏆 Secret unlocked: "${activeSecretWord.artifact}"`, 'success', 4000);
+        collectArtifact(activeSecretWord.artifact, activeSecretWord.rarity);
+        activeSecretWord = null;
+      }
+    });
+  }
+
+  // integrate secret words into the welcome message flow
+  // override refreshWelcomeMessage to check secret words first
+  const _originalRefreshWelcome = refreshWelcomeMessage;
+  refreshWelcomeMessage = function() {
+    // try secret word first (2% chance)
+    if (!checkSecretWord()) {
+      // no secret word — use normal welcome message
+      _originalRefreshWelcome();
+    }
+  };
+  window.refreshWelcomeMessage = refreshWelcomeMessage;
+
+  /* ══════════════════════════════
+     CITY-BASED ARTIFACTS
+     Awards regional artifacts based on user's stored location.
+     Uses simple lat/lng bounding boxes for major Indian cities.
+  ══════════════════════════════ */
+  const CITY_ARTIFACTS = [
+    { city: 'Mumbai',     artifact: 'Gateway Keeper',    lat: 19.07, lng: 72.87, radius: 0.5 },
+    { city: 'Delhi',      artifact: 'Capital Chronicle', lat: 28.61, lng: 77.20, radius: 0.5 },
+    { city: 'Bengaluru',  artifact: 'Startup Scroll',    lat: 12.97, lng: 77.59, radius: 0.5 },
+    { city: 'Jaipur',     artifact: 'Desert Compass',    lat: 26.91, lng: 75.78, radius: 0.4 },
+    { city: 'Bhopal',     artifact: 'Lake Whisperer',    lat: 23.25, lng: 77.41, radius: 0.4 },
+    { city: 'Hyderabad',  artifact: 'Pearl Basin',       lat: 17.38, lng: 78.48, radius: 0.5 },
+    { city: 'Chennai',    artifact: 'Coastal Archive',   lat: 13.08, lng: 80.27, radius: 0.5 },
+    { city: 'Kolkata',    artifact: 'River Chronicle',   lat: 22.57, lng: 88.36, radius: 0.5 },
+    { city: 'Pune',       artifact: 'Deccan Scroll',     lat: 18.52, lng: 73.85, radius: 0.4 },
+    { city: 'Ahmedabad',  artifact: 'Textile Relic',     lat: 23.02, lng: 72.57, radius: 0.4 },
+    { city: 'Lucknow',    artifact: 'Nawab Manuscript',  lat: 26.84, lng: 80.94, radius: 0.4 },
+    { city: 'Indore',     artifact: 'Central Beacon',    lat: 22.71, lng: 75.85, radius: 0.3 }
+  ];
+
+  // checks if user's stored location matches a city and awards artifact (once per city)
+  function checkCityArtifact() {
+    const lat = parseFloat(localStorage.getItem('iyomi-lat'));
+    const lng = parseFloat(localStorage.getItem('iyomi-lng'));
+    if (isNaN(lat) || isNaN(lng)) return;
+
+    const collected = JSON.parse(localStorage.getItem('iyomi-city-artifacts') || '[]');
+
+    for (const city of CITY_ARTIFACTS) {
+      if (collected.includes(city.city)) continue;
+      const dist = Math.sqrt(Math.pow(lat - city.lat, 2) + Math.pow(lng - city.lng, 2));
+      if (dist <= city.radius) {
+        collected.push(city.city);
+        localStorage.setItem('iyomi-city-artifacts', JSON.stringify(collected));
+        showToast(`📍 City artifact: "${city.artifact}" (${city.city})`, 'success', 4000);
+        collectArtifact(city.artifact, RARITY_TIERS[2]); // Epic rarity
+        break; // one per session
+      }
+    }
+  }
+
+  // check on page load if location is available
+  if (localStorage.getItem('iyomi-location-status') === 'granted') {
+    checkCityArtifact();
+  }
+
+  /* ══════════════════════════════
+     SEASONAL COLLECTIONS
+     Date-based artifact sets for Indian festivals and seasons.
+     Automatically detects current season/festival and offers collectibles.
+  ══════════════════════════════ */
+  const SEASONAL_COLLECTIONS = {
+    monsoon: {
+      months: [6, 7, 8], // July, Aug, Sep (0-indexed: 6,7,8)
+      artifacts: ['First Rain', 'Thunder Archive', 'Cloud Walker', 'Storm Chaser', 'Monsoon Scholar'],
+      label: 'Monsoon Collection'
+    },
+    diwali: {
+      // approximate Diwali window — late Oct / early Nov
+      dateCheck: (m, d) => (m === 9 && d >= 20) || (m === 10 && d <= 15),
+      artifacts: ['First Lamp', 'Festival Spark', 'Golden Light', 'Midnight Lantern', 'Diwali Master'],
+      label: 'Diwali Collection'
+    },
+    holi: {
+      // approximate Holi window — early-mid March
+      dateCheck: (m, d) => m === 2 && d >= 1 && d <= 20,
+      artifacts: ['Red Powder', 'Blue Burst', 'Color Weaver', 'Rainbow Collector', 'Holi Champion'],
+      label: 'Holi Collection'
+    },
+    winter: {
+      months: [11, 0, 1], // Dec, Jan, Feb
+      artifacts: ['Frost Whisper', 'Winter Archive', 'Cold Ember', 'Snow Scroll', 'Winter Sage'],
+      label: 'Winter Collection'
+    },
+    spring: {
+      months: [2, 3], // Mar, Apr
+      artifacts: ['Cherry Blossom', 'Spring Awakening', 'Bloom Fragment', 'Petal Drift', 'Sakura Wind'],
+      label: 'Spring Collection'
+    }
+  };
+
+  // returns the active seasonal collection, if any
+  function getActiveSeason() {
+    const now = new Date();
+    const month = now.getMonth();
+    const day = now.getDate();
+
+    for (const [key, season] of Object.entries(SEASONAL_COLLECTIONS)) {
+      if (season.dateCheck && season.dateCheck(month, day)) return { key, ...season };
+      if (season.months && season.months.includes(month)) return { key, ...season };
+    }
+    return null;
+  }
+
+  // 5% chance on new chat to offer a seasonal artifact (if season is active)
+  function checkSeasonalArtifact() {
+    const season = getActiveSeason();
+    if (!season) return;
+    if (Math.random() > 0.05) return; // 5% chance
+
+    const collected = JSON.parse(localStorage.getItem('iyomi-seasonal-' + season.key) || '[]');
+    const available = season.artifacts.filter(a => !collected.includes(a));
+    if (available.length === 0) return; // all collected
+
+    const artifact = available[Math.floor(Math.random() * available.length)];
+    const rarity = RARITY_TIERS[Math.min(collected.length, 4)]; // rarity increases as you collect more
+
+    setTimeout(() => {
+      showEasterEggPopup(artifact, rarity);
+
+      // override the collect to also track seasonal progress
+      const origCollect = collectArtifact;
+      const popup = document.getElementById('easterEggPopup');
+      if (popup) {
+        const btn = popup.querySelector('.ee-collect-btn');
+        if (btn) {
+          btn.onclick = () => {
+            collected.push(artifact);
+            localStorage.setItem('iyomi-seasonal-' + season.key, JSON.stringify(collected));
+            const progress = `${collected.length}/${season.artifacts.length}`;
+            origCollect(artifact, rarity);
+            showToast(`${season.label}: ${progress}`, 'info', 3000);
+            dismissEasterEgg(popup);
+          };
+        }
+      }
+    }, 1200);
+  }
+
+  /* ══════════════════════════════
+     CONVERSATION ACHIEVEMENTS
+     Tracks user behavior across chats and awards achievement artifacts.
+     Stored in localStorage, synced to backend when available.
+  ══════════════════════════════ */
+  const ACHIEVEMENTS = [
+    { id: 'curious_one',      name: 'The Curious One',    desc: 'Ask 100 questions',        stat: 'questions',   target: 100 },
+    { id: 'knowledge_seeker', name: 'Knowledge Seeker',   desc: 'Learn 10 topics',          stat: 'topics',      target: 10 },
+    { id: 'builder',          name: 'Builder',             desc: 'Complete 50 conversations', stat: 'completions', target: 50 },
+    { id: 'explorer',         name: 'Explorer',            desc: 'Explore 20 rabbit holes',  stat: 'explorations',target: 20 },
+    { id: 'dedicated',        name: 'The Dedicated',       desc: 'Send 500 messages',        stat: 'messages',    target: 500 },
+    { id: 'night_owl',        name: 'Night Owl',           desc: 'Chat after midnight 10x',  stat: 'late_chats',  target: 10 },
+    { id: 'early_bird',       name: 'Early Bird',          desc: 'Chat before 6 AM 10x',     stat: 'early_chats', target: 10 },
+    { id: 'deep_thinker',     name: 'Deep Thinker',        desc: '20 chats with 30+ messages',stat: 'deep_chats', target: 20 },
+    { id: 'marathoner',       name: 'Marathoner',          desc: '7-day streak',             stat: 'max_streak',  target: 7 },
+    { id: 'ironman',          name: 'Ironman',              desc: '30-day streak',            stat: 'max_streak',  target: 30 }
+  ];
+
+  // load achievement stats from localStorage
+  let achievementStats = JSON.parse(localStorage.getItem('iyomi-achievement-stats') || '{}');
+  let unlockedAchievements = JSON.parse(localStorage.getItem('iyomi-achievements') || '[]');
+
+  function incrementStat(stat, amount = 1) {
+    if (!achievementStats[stat]) achievementStats[stat] = 0;
+    achievementStats[stat] += amount;
+    localStorage.setItem('iyomi-achievement-stats', JSON.stringify(achievementStats));
+    checkAchievements();
+  }
+
+  function checkAchievements() {
+    for (const ach of ACHIEVEMENTS) {
+      if (unlockedAchievements.includes(ach.id)) continue;
+      const current = achievementStats[ach.stat] || 0;
+      if (current >= ach.target) {
+        unlockedAchievements.push(ach.id);
+        localStorage.setItem('iyomi-achievements', JSON.stringify(unlockedAchievements));
+        showToast(`🏆 Achievement: "${ach.name}" — ${ach.desc}`, 'success', 5000);
+        collectArtifact(ach.name, RARITY_TIERS[2]); // Epic rarity
+
+        // sync to backend
+        if (clerkUserId) {
+          fetch(`${API}/api/user-stats/achievement`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: clerkUserId, achievementId: ach.id, name: ach.name })
+          }).catch(() => {});
+        }
+      }
+    }
+  }
+
+  // track message sends — called from appendMsg
+  function trackMessageBehavior(role) {
+    if (role !== 'user') return;
+    incrementStat('messages');
+
+    const hour = new Date().getHours();
+    if (hour >= 0 && hour < 5) incrementStat('late_chats');
+    if (hour >= 4 && hour < 6) incrementStat('early_chats');
+  }
+
+  // track question detection — simple heuristic: ends with "?"
+  function trackQuestion(text) {
+    if (text.trim().endsWith('?')) incrementStat('questions');
+  }
+
+  // track completed conversation (called when XP is awarded)
+  function trackConversationCompletion(messageCount) {
+    incrementStat('completions');
+    if (messageCount >= 30) incrementStat('deep_chats');
+  }
+
+  // integrate seasonal check into the welcome flow
+  const _prevRefreshWelcome = refreshWelcomeMessage;
+  refreshWelcomeMessage = function() {
+    _prevRefreshWelcome();
+    checkSeasonalArtifact();
+  };
+  window.refreshWelcomeMessage = refreshWelcomeMessage;
+
+  /* ══════════════════════════════
+     SECRET SOCIETY TIERS
+     Unlock ranks based on total artifacts collected.
+     10 → The Archive, 25 → The Inner Circle,
+     50 → The Curiosity Society, 100 → Keeper of Knowledge
+  ══════════════════════════════ */
+  const SOCIETY_TIERS = [
+    { threshold: 10,  name: 'The Archive',           rank: 'Initiate' },
+    { threshold: 25,  name: 'The Inner Circle',      rank: 'Member' },
+    { threshold: 50,  name: 'The Curiosity Society',  rank: 'Scholar' },
+    { threshold: 100, name: 'Keeper of Knowledge',    rank: 'Guardian' },
+    { threshold: 200, name: 'The Eternal Order',      rank: 'Sovereign' }
+  ];
+
+  let totalArtifactsCollected = parseInt(localStorage.getItem('iyomi-total-artifacts') || '0');
+  let currentSocietyTier = localStorage.getItem('iyomi-society-tier') || null;
+
+  // called after every artifact collection to check society rank-up
+  function checkSocietyRankUp() {
+    totalArtifactsCollected++;
+    localStorage.setItem('iyomi-total-artifacts', totalArtifactsCollected);
+
+    for (let i = SOCIETY_TIERS.length - 1; i >= 0; i--) {
+      const tier = SOCIETY_TIERS[i];
+      if (totalArtifactsCollected >= tier.threshold && currentSocietyTier !== tier.name) {
+        currentSocietyTier = tier.name;
+        localStorage.setItem('iyomi-society-tier', tier.name);
+        showToast(`🔮 Society rank unlocked: "${tier.name}" — ${tier.rank}`, 'success', 5000);
+
+        // sync to backend
+        if (clerkUserId) {
+          fetch(`${API}/api/user-stats/society`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: clerkUserId, tier: tier.name, rank: tier.rank })
+          }).catch(() => {});
+        }
+        break;
+      }
+    }
+  }
+
+  // patch collectArtifact to also track society progress
+  const _origCollectArtifact = collectArtifact;
+  collectArtifact = async function(artifactName, rarity) {
+    await _origCollectArtifact(artifactName, rarity);
+    checkSocietyRankUp();
+  };
+
+  /* ══════════════════════════════
+     PUZZLE TRAIL
+     Multi-day clue chain across sessions.
+     One clue per day. After all clues collected, final artifact unlocked.
+  ══════════════════════════════ */
+  const PUZZLE_CLUES = [
+    { day: 1,  clue: 'The key is hidden.',           hint: 'Day 1 of the trail.' },
+    { day: 2,  clue: 'Follow the stars.',             hint: 'The path becomes clearer.' },
+    { day: 3,  clue: 'The river knows the way.',      hint: 'Water carries secrets.' },
+    { day: 4,  clue: 'Look where light bends.',       hint: 'Refraction reveals truth.' },
+    { day: 5,  clue: 'North remembers.',               hint: 'Direction matters.' },
+    { day: 6,  clue: 'The archive opens at dawn.',     hint: 'Almost there.' },
+    { day: 7,  clue: 'You found the final piece.',     hint: 'The trail is complete.' }
+  ];
+
+  const PUZZLE_REWARD = { artifact: 'Trail Completion Relic', rarity: RARITY_TIERS[3] }; // Legendary
+
+  function checkPuzzleTrail() {
+    const puzzleData = JSON.parse(localStorage.getItem('iyomi-puzzle-trail') || '{}');
+    const today = new Date().toDateString();
+
+    // already shown today's clue
+    if (puzzleData.lastClueDate === today) return;
+
+    // puzzle already completed
+    if (puzzleData.completed) return;
+
+    const currentStep = puzzleData.step || 0;
+    if (currentStep >= PUZZLE_CLUES.length) {
+      // all clues collected — award final artifact
+      puzzleData.completed = true;
+      localStorage.setItem('iyomi-puzzle-trail', JSON.stringify(puzzleData));
+      showToast(`🧩 Puzzle trail complete! Unlocked: "${PUZZLE_REWARD.artifact}"`, 'success', 5000);
+      collectArtifact(PUZZLE_REWARD.artifact, PUZZLE_REWARD.rarity);
+      return;
+    }
+
+    // 15% chance to show today's clue (not every day, keeps suspense)
+    if (Math.random() > 0.15) return;
+
+    const clue = PUZZLE_CLUES[currentStep];
+    const heading = document.getElementById('welcomeHeading');
+    const sub = document.getElementById('welcomeSub');
+    if (heading) heading.textContent = clue.clue;
+    if (sub) sub.textContent = `Puzzle trail — clue ${clue.day} of ${PUZZLE_CLUES.length}`;
+
+    puzzleData.step = currentStep + 1;
+    puzzleData.lastClueDate = today;
+    localStorage.setItem('iyomi-puzzle-trail', JSON.stringify(puzzleData));
+  }
+
+  // check puzzle trail on every new chat
+  const _prevRefreshWelcome2 = refreshWelcomeMessage;
+  refreshWelcomeMessage = function() {
+    _prevRefreshWelcome2();
+    checkPuzzleTrail();
+  };
+  window.refreshWelcomeMessage = refreshWelcomeMessage;
+
+  /* ══════════════════════════════
+     COMMUNITY COUNTERS
+     Shows how many users own a specific artifact for scarcity.
+     Fetches from backend, displays in Easter egg popup.
+  ══════════════════════════════ */
+  async function fetchArtifactCount(artifactName) {
+    if (!clerkUserId) return null;
+    try {
+      const res = await fetch(`${API}/api/artifacts/count?name=${encodeURIComponent(artifactName)}`);
+      if (res.ok) {
+        const data = await res.json();
+        return data.count || null;
+      }
+    } catch (err) {
+      console.warn('[community] Could not fetch artifact count:', err.message);
+    }
+    return null;
+  }
+
+  // patch showEasterEggPopup to add community counter
+  const _origShowEasterEggPopup = showEasterEggPopup;
+  showEasterEggPopup = function(artifactName, rarity) {
+    _origShowEasterEggPopup(artifactName, rarity);
+
+    // async: fetch and display community count
+    fetchArtifactCount(artifactName).then(count => {
+      const popup = document.getElementById('easterEggPopup');
+      if (!popup || !count) return;
+      const counter = document.createElement('div');
+      counter.className = 'ee-community-count';
+      counter.textContent = count < 100
+        ? `Only ${count} users own this artifact.`
+        : `${count.toLocaleString()} users have discovered this.`;
+      const content = popup.querySelector('.ee-content');
+      if (content) content.appendChild(counter);
+    });
+  };
 
   /* ══════════════════════════════
      THEME SYSTEM
@@ -483,21 +1468,38 @@ document.addEventListener('DOMContentLoaded', () => {
     return clean.length > 50 ? clean.slice(0, 50) + '…' : clean;
   }
 
-  // ── fetch history from DB ──
+  // ── Loads conversation list from the database ──
   async function fetchHistory() {
     if (!clerkUserId) return;
+    // show loading skeleton
+    slEmptyHistory.style.display = 'none';
+    let skeleton = slNav.querySelector('.sl-skeleton');
+    if (!skeleton) {
+      skeleton = document.createElement('div');
+      skeleton.className = 'sl-skeleton';
+      skeleton.style.cssText = 'padding:12px 10px;display:flex;flex-direction:column;gap:8px;';
+      for (let i = 0; i < 4; i++) {
+        const bar = document.createElement('div');
+        bar.style.cssText = `height:14px;border-radius:6px;background:var(--bg-hover);width:${70 + Math.random() * 30}%;animation:pulse 1.2s ease-in-out infinite;`;
+        skeleton.appendChild(bar);
+      }
+      slNav.appendChild(skeleton);
+    }
     try {
       const res  = await fetch(`${API}/api/conversations?userId=${clerkUserId}`);
       const data = await res.json();
       conversations = data; // [{_id, title, updatedAt}]
+      if (skeleton) skeleton.remove();
       renderHistory();
     } catch (err) {
       console.error('[history] fetch error:', err.message);
+      if (skeleton) skeleton.remove();
+      showToast('Could not load chat history', 'error');
     }
   }
   window.fetchHistory = fetchHistory;
 
-  // ── create new conversation (optimistic only — DB handled by backend) ──
+  // ── Creates a local conversation entry with a temp ID until the backend confirms ──
   async function createConversation(firstMessage) {
     const title  = makeTitle(firstMessage);
     const tempId = 'temp-' + Date.now();
@@ -598,11 +1600,12 @@ document.addEventListener('DOMContentLoaded', () => {
     ctxMenu.querySelector('[data-action="pin"] span').textContent = isPinned ? 'Unpin chat' : 'Pin chat';
     ctxMenu.classList.add('open');
 
-    // position near click
-    const x = Math.min(e.clientX, window.innerWidth - 180);
-    const y = Math.min(e.clientY, window.innerHeight - 200);
-    ctxMenu.style.left = x + 'px';
-    ctxMenu.style.top = y + 'px';
+    // clamp menu position to stay within viewport
+    const menuW = 180, menuH = 190, pad = 8;
+    const x = Math.min(e.clientX, window.innerWidth - menuW - pad);
+    const y = Math.min(e.clientY, window.innerHeight - menuH - pad);
+    ctxMenu.style.left = Math.max(pad, x) + 'px';
+    ctxMenu.style.top  = Math.max(pad, y) + 'px';
 
     lucide.createIcons();
   }
@@ -660,6 +1663,14 @@ document.addEventListener('DOMContentLoaded', () => {
           pinnedChats.push(id);
         }
         localStorage.setItem('iyomi-pinned', JSON.stringify(pinnedChats));
+        // sync pin state to backend (non-blocking, graceful fail)
+        if (clerkUserId && !id.startsWith('temp-')) {
+          fetch(`${API}/api/conversations/${id}/pin`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pinned: pinnedChats.includes(id) })
+          }).catch(() => {});
+        }
         renderHistory();
         lucide.createIcons();
       }
@@ -668,20 +1679,36 @@ document.addEventListener('DOMContentLoaded', () => {
         if (confirm('Archive this chat?')) {
           archivedChats.push(id);
           localStorage.setItem('iyomi-archived', JSON.stringify(archivedChats));
+          // sync archive state to backend (non-blocking, graceful fail)
+          if (clerkUserId && !id.startsWith('temp-')) {
+            fetch(`${API}/api/conversations/${id}/archive`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ archived: true })
+            }).catch(() => {});
+          }
           if (activeConvId === id) resetChat();
           renderHistory();
           lucide.createIcons();
+          showToast('Chat archived', 'success');
         }
       }
 
       if (action === 'delete') {
         if (confirm('Delete this chat permanently?')) {
+          // delete from backend
+          if (clerkUserId && !id.startsWith('temp-')) {
+            fetch(`${API}/api/conversations/${id}`, { method: 'DELETE' }).catch(err => {
+              console.warn('[delete] Backend delete failed:', err.message);
+            });
+          }
           conversations = conversations.filter(c => c._id !== id);
           pinnedChats = pinnedChats.filter(p => p !== id);
           localStorage.setItem('iyomi-pinned', JSON.stringify(pinnedChats));
           if (activeConvId === id) resetChat();
           renderHistory();
           lucide.createIcons();
+          showToast('Chat deleted', 'success');
         }
       }
     });
@@ -690,6 +1717,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── load conversation from DB ──
   async function loadConversation(convId) {
     activeConvId = convId;
+    convMessageCount = 0;
+    xpAwardedThisConv = false;
     renderHistory();
 
     messagesInner.innerHTML = '';
@@ -758,7 +1787,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function updateSendBtn() {
-    sendBtn.disabled = chatInput.value.trim().length === 0 && attachedFiles.length === 0;
+    sendBtn.disabled = sendBtn.dataset.cooldown === 'true' || (chatInput.value.trim().length === 0 && attachedFiles.length === 0);
   }
 
   chatInput.addEventListener('keydown', e => {
@@ -797,11 +1826,19 @@ document.addEventListener('DOMContentLoaded', () => {
     attachedFiles = [];
     attachmentPreviews.innerHTML = '';
     if (isRecording) stopRecording();
+
+    // prevent rapid-fire sends — 1.5s cooldown
+    sendBtn.dataset.cooldown = 'true';
+    setTimeout(() => { delete sendBtn.dataset.cooldown; updateSendBtn(); }, 1500);
+
     simulateResponse(text || '[Attachment]');
   }
 
   function appendMsg(role, text, isMarkdown = false) {
     msgCount++;
+    convMessageCount++;
+    trackMessageBehavior(role);
+    if (role === 'user') trackQuestion(text);
 
     let groupEl;
 
@@ -1020,6 +2057,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
       conversationHistory.push({ role: 'user',      content: userText });
       conversationHistory.push({ role: 'assistant', content: fullText });
+      convMessageCount++; // count the AI response too
+
+      // award XP if 5+ messages exchanged and not yet awarded this conversation
+      if (convMessageCount >= 5 && !xpAwardedThisConv && clerkUserId) {
+        xpAwardedThisConv = true;
+        const xp = calcConversationXp(convMessageCount);
+        awardXp(xp);
+        trackConversationCompletion(convMessageCount);
+      }
 
       const conv = getActiveConv();
       if (conv) {
@@ -1029,10 +2075,34 @@ document.addEventListener('DOMContentLoaded', () => {
         renderHistory();
       }
 
+      // if backend returned a temp ID, re-fetch to get the real MongoDB _id
+      if (activeConvId && activeConvId.startsWith('temp-') && clerkUserId) {
+        try {
+          const syncRes = await fetch(`${API}/api/conversations?userId=${clerkUserId}`);
+          const syncData = await syncRes.json();
+          if (syncData && syncData.length > 0) {
+            const newest = syncData[0];
+            const syncIdx = conversations.findIndex(c => c._id === activeConvId);
+            if (syncIdx !== -1) {
+              conversations[syncIdx]._id = newest._id;
+              activeConvId = newest._id;
+              renderHistory();
+            }
+          }
+        } catch (syncErr) {
+          console.warn('[sync] Could not sync conversation ID:', syncErr.message);
+        }
+      }
+
     } catch (err) {
       console.error('Fetch error:', err);
       tyEl.remove();
-      appendMsg('ai', `Something went wrong: ${err.message}`, false);
+      const isNetwork = err.name === 'TypeError' || err.message.includes('Failed to fetch');
+      const userMsg = isNetwork
+        ? 'Network error — check your connection and make sure the backend is running.'
+        : `Something went wrong: ${err.message}`;
+      appendMsg('ai', userMsg, false);
+      showToast(isNetwork ? 'Connection lost' : 'Response failed', 'error');
     }
 
     typing = false;
@@ -1129,12 +2199,57 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ══════════════════════════════
      SAVE CHECKPOINT → ARTIFACTS
   ══════════════════════════════ */
+  /* ── Saves a response checkpoint to the Saved sidebar + localStorage ── */
   let checkpointCounter = 0;
+
+  function saveCheckpointsToStorage() {
+    const cards = artifactList.querySelectorAll('.artifact-card[data-checkpoint-id]');
+    const data = [];
+    cards.forEach(card => {
+      data.push({
+        id: card.dataset.checkpointId,
+        title: card.querySelector('.artifact-name')?.textContent || '',
+        convId: activeConvId
+      });
+    });
+    localStorage.setItem('iyomi-checkpoints', JSON.stringify(data));
+  }
+
+  function loadCheckpointsFromStorage() {
+    const saved = localStorage.getItem('iyomi-checkpoints');
+    if (!saved) return;
+    try {
+      const data = JSON.parse(saved);
+      if (!data.length) return;
+      artifactsEmpty.style.display = 'none';
+      artifactList.style.display = 'flex';
+      artifactList.style.flexDirection = 'column';
+      data.forEach(cp => {
+        checkpointCounter++;
+        const card = document.createElement('div');
+        card.className = 'artifact-card';
+        card.dataset.checkpointId = cp.id;
+        card.innerHTML = `
+          <div class="artifact-icon artifact-icon--checkpoint"><i data-lucide="bookmark-check"></i></div>
+          <div class="artifact-info">
+            <div class="artifact-name">${cp.title}</div>
+            <div class="artifact-meta">Checkpoint · saved</div>
+          </div>`;
+        artifactList.appendChild(card);
+      });
+      refreshIcons();
+    } catch (e) {
+      console.warn('[checkpoints] Could not load saved checkpoints');
+    }
+  }
+
+  // restore checkpoints on page load
+  loadCheckpointsFromStorage();
 
   function addCheckpointToArtifacts(responseText, queryText, triggerBtn) {
     checkpointCounter++;
     const id = 'checkpoint-' + checkpointCounter + '-' + Date.now();
-    const title = queryText.length > 40 ? queryText.slice(0, 40) + '…' : queryText;
+    const title = escapeHtml(queryText.length > 40 ? queryText.slice(0, 40) + '…' : queryText);
 
     artifactsEmpty.style.display = 'none';
     artifactList.style.display = 'flex';
@@ -1166,6 +2281,7 @@ document.addEventListener('DOMContentLoaded', () => {
       sidebarRight.classList.remove('collapsed');
     }
 
+    saveCheckpointsToStorage();
     return id;
   }
 
@@ -1179,6 +2295,7 @@ document.addEventListener('DOMContentLoaded', () => {
       artifactsEmpty.style.display = 'flex';
       artifactList.style.display = 'none';
     }
+    saveCheckpointsToStorage();
   }
 
   /* ══════════════════════════════
@@ -1327,7 +2444,11 @@ document.addEventListener('DOMContentLoaded', () => {
         .replace(/\*(.+?)\*/g, '<em>$1</em>')
         .replace(/~~(.+?)~~/g, '<del>$1</del>')
         .replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>')
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
+          // block javascript: and data: URIs, allow only http/https
+          const safeUrl = /^https?:\/\//i.test(url.trim()) ? url.trim() : '#';
+          return `<a href="${safeUrl}" target="_blank" rel="noopener">${text}</a>`;
+        });
     }
 
     // 4. render blocks to HTML
@@ -1472,6 +2593,8 @@ document.addEventListener('DOMContentLoaded', () => {
     typing    = false;
     conversationHistory = [];
     activeConvId = null;
+    convMessageCount = 0;
+    xpAwardedThisConv = false;
     attachedFiles = [];
     attachmentPreviews.innerHTML = '';
     if (isRecording) stopRecording();
@@ -1486,10 +2609,13 @@ document.addEventListener('DOMContentLoaded', () => {
     chatInput.style.height = 'auto';
     sendBtn.disabled = true;
     topbarTitle.textContent = 'New Chat';
+    refreshWelcomeMessage();
+    checkEasterEgg();
     renderHistory();
   }
 
   // init
+  checkEasterEgg();
   renderHistory();
 
 });
@@ -1545,9 +2671,40 @@ window.addEventListener('load', async function () {
   if (popName)  popName.textContent  = name;
   if (popEmail) popEmail.textContent = email;
 
-  // update welcome heading with real first name
-  const welcomeName = document.querySelector('.welcome-name');
-  if (welcomeName) welcomeName.textContent = user.firstName || name.split(' ')[0];
+  // update welcome heading with a fresh contextual message
+  if (window.refreshWelcomeMessage) window.refreshWelcomeMessage();
+
+  // populate profile stats (level, title, petals, streak)
+  function updateProfileStats(stats) {
+    const titleEl  = document.getElementById('slUserTitle');
+    const levelEl  = document.getElementById('slUserLevel');
+    const petalEl  = document.getElementById('slPetalCount');
+    const streakEl = document.getElementById('slStreakCount');
+    if (titleEl)  titleEl.textContent  = stats.title || 'Blossom Wanderer';
+    if (levelEl)  levelEl.textContent  = 'Lv ' + (stats.level || 0);
+    if (petalEl)  petalEl.textContent  = stats.petals || 0;
+    if (streakEl) streakEl.textContent = stats.streak || 0;
+  }
+  window.updateProfileStats = updateProfileStats;
+
+  // load stats from backend (or default)
+  async function loadUserStats() {
+    if (!clerkUserId) return;
+    try {
+      const res = await fetch(`${API}/api/user-stats?userId=${clerkUserId}`);
+      if (res.ok) {
+        const stats = await res.json();
+        updateProfileStats(stats);
+      } else {
+        updateProfileStats({ level: 0, title: 'Blossom Wanderer', petals: 0, streak: 0 });
+      }
+    } catch (err) {
+      console.warn('[stats] Could not load user stats:', err.message);
+      updateProfileStats({ level: 0, title: 'Blossom Wanderer', petals: 0, streak: 0 });
+    }
+  }
+
+  loadUserStats();
 
   // now load chat history (clerkUserId is set)
   if (window.fetchHistory) window.fetchHistory();
@@ -1561,7 +2718,6 @@ window.addEventListener('load', async function () {
     }
   });
 
-  // stubs
   /* ══════════════════════════════
      SETTINGS MODAL
   ══════════════════════════════ */
@@ -1582,6 +2738,13 @@ window.addEventListener('load', async function () {
   document.getElementById('slSettingsBtn').addEventListener('click', e => {
     e.preventDefault();
     populateSettingsAccount();
+    // always open settings on the General tab
+    document.querySelectorAll('.iy-nav-item').forEach(b => b.classList.remove('iy-nav-item--active'));
+    document.querySelectorAll('.iy-panel').forEach(p => p.style.display = 'none');
+    const generalBtn = document.querySelector('.iy-nav-item[data-panel="general"]');
+    const generalPanel = document.getElementById('panel-general');
+    if (generalBtn) generalBtn.classList.add('iy-nav-item--active');
+    if (generalPanel) generalPanel.style.display = 'flex';
     openModal(settingsOverlay);
   });
 
@@ -1654,6 +2817,10 @@ window.addEventListener('load', async function () {
   document.getElementById('manageAccountBtn')?.addEventListener('click', () => {
     if (window.Clerk?.user) Clerk.openUserProfile();
   });
+  // opens Clerk user profile to view active sessions
+  document.getElementById('activeSessionsBtn')?.addEventListener('click', () => {
+    if (window.Clerk?.user) Clerk.openUserProfile();
+  });
 
   // ── APPEARANCE: theme segmented ──
   const themeSegs = document.querySelectorAll('#themeSegmented .iy-seg-btn');
@@ -1711,6 +2878,22 @@ window.addEventListener('load', async function () {
     });
   });
 
+  // ── APPEARANCE: accent color ──
+  const savedAccent = localStorage.getItem('iyomi-accent') || '#4a9eff';
+  document.documentElement.style.setProperty('--accent-color', savedAccent);
+  const swatches = document.querySelectorAll('#accentSwatches .iy-swatch');
+  swatches.forEach(btn => {
+    if (btn.dataset.color === savedAccent) btn.classList.add('iy-swatch--active');
+    else btn.classList.remove('iy-swatch--active');
+    btn.addEventListener('click', () => {
+      swatches.forEach(s => s.classList.remove('iy-swatch--active'));
+      btn.classList.add('iy-swatch--active');
+      const color = btn.dataset.color;
+      localStorage.setItem('iyomi-accent', color);
+      document.documentElement.style.setProperty('--accent-color', color);
+    });
+  });
+
   // ── PREFERENCES: tone ──
   const savedTone = localStorage.getItem('iyomi-tone') || 'friendly';
   const toneSegs  = document.querySelectorAll('#toneSegmented .iy-seg-btn');
@@ -1751,6 +2934,79 @@ window.addEventListener('load', async function () {
 
   initToggle('autoTitleToggle',   'iyomi-auto-title',    true);
   initToggle('saveHistoryToggle', 'iyomi-save-history',  true);
+  initToggle('memoryToggle',      'iyomi-memory',        true);
+  initToggle('historyRefToggle',  'iyomi-history-ref',   true);
+
+  // ── PERSONALIZATION: nickname, occupation, about you — persist to localStorage ──
+  const personalFields = [
+    { id: 'settingsNickname',   key: 'iyomi-nickname' },
+    { id: 'settingsOccupation', key: 'iyomi-occupation' },
+    { id: 'settingsAboutYou',   key: 'iyomi-about-you' }
+  ];
+  personalFields.forEach(({ id, key }) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const saved = localStorage.getItem(key);
+    if (saved) el.value = saved;
+    el.addEventListener('input', () => {
+      localStorage.setItem(key, el.value);
+    });
+  });
+
+  // ── DATA CONTROLS: location selector ──
+  const locationSelect = document.getElementById('locationSelect');
+  if (locationSelect) {
+    const savedLocation = localStorage.getItem('iyomi-location') || 'auto';
+    locationSelect.value = savedLocation;
+    locationSelect.addEventListener('change', () => {
+      localStorage.setItem('iyomi-location', locationSelect.value);
+    });
+  }
+
+  // ── DATA CONTROLS: view archived chats ──
+  document.getElementById('viewArchivedBtn')?.addEventListener('click', () => {
+    const archived = conversations.filter(c => archivedChats.includes(c._id));
+    if (archived.length === 0) {
+      alert('No archived chats.');
+      return;
+    }
+    const titles = archived.map((c, i) => `${i + 1}. ${c.title}`).join('\n');
+    const choice = prompt(
+      `Archived chats:\n${titles}\n\nEnter a number to restore, or leave empty to cancel:`
+    );
+    if (choice) {
+      const idx = parseInt(choice) - 1;
+      if (idx >= 0 && idx < archived.length) {
+        const restoredId = archived[idx]._id;
+        archivedChats = archivedChats.filter(id => id !== restoredId);
+        localStorage.setItem('iyomi-archived', JSON.stringify(archivedChats));
+        if (window.renderHistory) window.renderHistory();
+        alert(`"${archived[idx].title}" restored.`);
+      }
+    }
+  });
+
+  // ── DATA CONTROLS: archive all chats ──
+  document.getElementById('archiveAllBtn')?.addEventListener('click', () => {
+    if (!confirm('Archive all current chats? They can be restored from Data Controls.')) return;
+    conversations.forEach(c => {
+      if (!archivedChats.includes(c._id)) archivedChats.push(c._id);
+    });
+    localStorage.setItem('iyomi-archived', JSON.stringify(archivedChats));
+    activeConvId = null;
+    conversationHistory = [];
+    if (window.renderHistory) window.renderHistory();
+    const mi = document.getElementById('messagesInner');
+    const cm = document.getElementById('chatMain');
+    const ws = document.getElementById('welcomeState');
+    const ma = document.getElementById('messagesArea');
+    if (mi) mi.innerHTML = '';
+    if (cm) cm.classList.remove('chat-started');
+    if (ws) ws.style.display = 'flex';
+    if (ma) ma.style.display = 'none';
+    const tt = document.getElementById('topbarTitle');
+    if (tt) tt.textContent = 'New Chat';
+  });
 
   // ── PRIVACY: export data ──
   document.getElementById('exportDataBtn')?.addEventListener('click', () => {
@@ -1807,6 +3063,11 @@ window.addEventListener('load', async function () {
         conversations = [];
         activeConvId  = null;
         conversationHistory = [];
+        // wipe pinned/archived state alongside conversations
+        pinnedChats = [];
+        archivedChats = [];
+        localStorage.removeItem('iyomi-pinned');
+        localStorage.removeItem('iyomi-archived');
         renderHistory();
         messagesInner.innerHTML = '';
         chatMain.classList.remove('chat-started');
@@ -1841,8 +3102,43 @@ window.addEventListener('load', async function () {
     });
   });
 
+  // ── KEYBOARD SHORTCUTS — bound to match the Keyboard settings panel ──
+  document.addEventListener('keydown', e => {
+    // ignore if user is typing in an input/textarea
+    const tag = document.activeElement?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+    // Ctrl+N — new chat
+    if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+      e.preventDefault();
+      const newChatBtn = document.getElementById('newChatBtn');
+      if (newChatBtn) newChatBtn.click();
+    }
+
+    // Ctrl+B — toggle left sidebar
+    if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+      e.preventDefault();
+      const sidebar = document.getElementById('sidebarLeft');
+      if (sidebar) sidebar.classList.toggle('collapsed');
+    }
+
+    // Ctrl+K — focus search chats
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      const searchLink = document.getElementById('searchChatsLink');
+      if (searchLink) searchLink.click();
+    }
+
+    // "/" — focus chat input
+    if (e.key === '/' && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      const chatInput = document.getElementById('chatInput');
+      if (chatInput) chatInput.focus();
+    }
+  });
+
   lucide.createIcons();
 
   // load chat history from DB
   window.fetchHistory();
-});``
+});
